@@ -154,6 +154,31 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
   .karne-sayfa:last-child { break-after: auto; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Optik okuma */
+label.dugme { display: inline-block; cursor: pointer; border: 1px solid var(--cizgi); background: var(--kart); border-radius: 8px; padding: 7px 12px; }
+label.dugme:hover { border-color: var(--vurgu); }
+label.dugme.ana, button.secili { background: var(--vurgu); color: #fff; border-color: var(--vurgu); }
+@media (prefers-color-scheme: dark) { :root:not([data-tema="acik"]) label.dugme.ana, :root:not([data-tema="acik"]) button.secili { color: #0b1020; } }
+.oku-dugmeler label.dugme { font-size: 17px; padding: 14px 22px; }
+.optik-ders input[type=text] { flex: 1; min-width: 160px; }
+.anahtar { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.anahtar input { width: 100%; font-family: ui-monospace, Consolas, monospace; letter-spacing: 1px; }
+input.hatali { border-color: var(--zayif); }
+.kontrol-soru.bitti b::after { content: ' ✓'; color: var(--iyi); }
+.secenekler button { min-width: 48px; min-height: 44px; font-size: 16px; }
+.kontrol-ust button { min-width: 48px; min-height: 40px; }
+canvas.kirpik { display: block; max-width: 100%; margin: 8px 0; border: 1px solid var(--cizgi); border-radius: 6px; background: #fff; }
+.optik-form svg { display: block; width: 100%; max-width: 794px; height: auto; margin: 12px auto; border: 1px solid var(--cizgi); background: #fff; }
+@page optikform { size: A4; margin: 0; }
+@media print {
+  .optik-form { page: optikform; }
+  .optik-form svg { width: 210mm; height: 296mm; max-width: none; margin: 0; border: 0; }
+}
+
+details summary { cursor: pointer; }
+details p { margin: 4px 0; }
+select { max-width: 100%; }
 </style>
 </head>
 <body>
@@ -164,6 +189,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     <a href="#/ogrenciler" data-kok="ogrenciler">Öğrenciler</a>
     <a href="#/konu" data-kok="konu">Konu takibi</a>
     <a href="#/elle" data-kok="elle">Elle sonuç</a>
+    <a href="#/optik" data-kok="optik">Optik</a>
     <a href="#/veri" data-kok="veri">Veri ve yedek</a>
   </nav>
   <span class="bosluk"></span>
@@ -171,7 +197,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
 </header>
 <div id="serit" class="yedek-serit gizli"></div>
 <main id="ekran"><p class="alt">Yükleniyor…</p></main>
-<input type="file" id="dosya-sec" accept=".json,application/json" class="gizli">
+<input type="file" id="dosya-sec" accept=".json,.txt,application/json,text/plain" class="gizli">
 <script>/* Deneme Takip · hesap motoru (saf işlevler; tarayıcıda ve Node'da çalışır).
  *
  * Veri biçimi (aktarım ve durum aynı yapıyı paylaşır):
@@ -230,6 +256,15 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     return dersAnahtari(ders, 'A').filter(k => k && k !== 'X').length || null;
   }
 
+  /* Z = (x − ortalama) ÷ standart sapma (grup içi, kitle formülü); en az 2 değer ve sıfırdan büyük sapma gerekir. */
+  function standartla(grup, deger, yaz) {
+    const v = grup.filter(s => deger(s) != null);
+    const n = v.length;
+    const ort = n ? v.reduce((t, s) => t + deger(s), 0) / n : 0;
+    const ss = n ? Math.sqrt(v.reduce((t, s) => t + (deger(s) - ort) ** 2, 0) / n) : 0;
+    for (const s of grup) yaz(s, n >= 2 && ss > 1e-9 && deger(s) != null ? (deger(s) - ort) / ss : null);
+  }
+
   /* Bir sınavın bütün kâğıtlarını puanlar; sıra, sınıf sırası ve ortalamaları ekler.
    * basari = net ÷ geçerli soru; öğrencinin toplam başarısı yalnız girdiği derslerin sorularına bölünür. */
   function sinavHesapla(sinav) {
@@ -264,6 +299,12 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     Object.values(siniflar).forEach(g => sirala(g, s => s.toplam).forEach((v, k) => sinifSira.set(k, v)));
     satirlar.forEach(s => { s.sira = genelSira.get(s); s.sinifSira = sinifSira.get(s); });
     satirlar.sort((a, b) => a.sira - b.sira || String(a.no).localeCompare(String(b.no), 'tr', { numeric: true }));
+    // Z ve T puanı: sınava giren bütün kâğıtlar içinde; toplamda başarı oranı, derste net üzerinden
+    standartla(satirlar, s => s.basari, (s, z) => { s.z = z; s.t = z == null ? null : 50 + 10 * z; });
+    for (const ders of sinav.dersler) {
+      standartla(satirlar.filter(s => s.dersler[ders.id]), s => s.dersler[ders.id].net,
+        (s, z) => { const p = s.dersler[ders.id]; p.z = z; p.t = z == null ? null : 50 + 10 * z; });
+    }
 
     const ortalama = (grup) => {
       const o = { kisi: grup.length, toplam: null, basari: null, dersler: {} };
@@ -400,6 +441,292 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     };
   }
 
+  /* Kopya analizi: aynı kitapçıktaki her öğrenci çifti için ortak yanlış (ikisinin de aynı yanlış şıkkı
+   * işaretlediği soru) sayısı, bu sayının bağımsız çalışan iki öğrenciden beklenen değeri ve
+   * "en az bu kadar ortak yanlış" olasılığı.
+   * Beklenti: ikisinin de yanlış yaptığı her soruda aynı şıkkı seçme olasılığı = Σ p², p = o soruda yanlış
+   * şıkların sınıftaki seçilme oranları (çiftin kendisi hariç, her şıkka +0,5 düzeltme; az düzeltme beklentiyi
+   * düşürmez, yani temkinlidir). Popüler bir çeldiricide
+   * buluşmak az, kimsenin seçmediği şıkta buluşmak çok şüphelidir. Toplam olasılık Poisson-binom dağılımından;
+   * çok sayıda çift karşılaştırıldığı için olasılık çift sayısıyla çarpılır (Bonferroni).
+   * Ayrıca Harpp-Hogan oranı: ortak yanlış ÷ farklı cevaplanan soru. Sonuç kanıt değil, inceleme işaretidir. */
+  function kopyaAnalizi(hesap) {
+    const dersler = hesap.sinav.dersler.filter(d => !d.elle);
+    const kagitlar = hesap.satirlar.filter(s => s.no && s.kagit.cevap && dersler.some(d => s.kagit.cevap[d.id] != null));
+    const gruplar = new Map();
+    kagitlar.forEach(s => { const k = s.kagit.kitapcik || 'A'; (gruplar.get(k) || gruplar.set(k, []).get(k)).push(s); });
+    const ciftler = [];
+    let ciftSayisi = 0;
+    for (const [kitapcik, grup] of gruplar) {
+      // soru listesi: [dersId, i, kabul, yanlış şıklar]
+      const sorular = [];
+      for (const d of dersler) {
+        const anahtar = dersAnahtari(d, kitapcik);
+        for (let i = 0; i < d.soru; i++) {
+          const kabul = anahtar[i];
+          if (!kabul || kabul === 'X') continue;
+          sorular.push({ dersId: d.id, i, kabul, yanlislar: HARFLER.split('').filter(h => kabul.indexOf(h) < 0) });
+        }
+      }
+      const cevap = (s, q) => { const c = s.kagit.cevap[q.dersId]; return c == null ? null : (c[q.i] || '-'); };
+      const yanlisMi = (c, q) => c && c !== '-' && c !== '*' && q.kabul.indexOf(c) < 0;
+      // her soruda yanlış şıkların sayımı
+      const sayim = sorular.map(q => {
+        const n = {};
+        for (const s of grup) { const c = cevap(s, q); if (yanlisMi(c, q)) n[c] = (n[c] || 0) + 1; }
+        return n;
+      });
+      ciftSayisi += grup.length * (grup.length - 1) / 2;
+      for (let a = 0; a < grup.length; a++) {
+        for (let b = a + 1; b < grup.length; b++) {
+          const A = grup[a], B = grup[b];
+          let ortak = 0, ortakBos = 0, farkli = 0, ikisiYanlis = 0, beklenen = 0;
+          const ortakDers = {};
+          const olas = [];
+          sorular.forEach((q, j) => {
+            const ca = cevap(A, q), cb = cevap(B, q);
+            if (ca == null || cb == null) return;
+            if (ca !== cb) farkli++;
+            if (ca === '-' && cb === '-') ortakBos++;
+            if (!yanlisMi(ca, q) || !yanlisMi(cb, q)) return;
+            ikisiYanlis++;
+            const n = sayim[j];
+            let toplam = 0;
+            const p = q.yanlislar.map(h => { const v = (n[h] || 0) - (ca === h) - (cb === h) + 0.5; toplam += v; return v; });
+            const s = p.reduce((t, v) => t + (v / toplam) ** 2, 0);
+            olas.push(s); beklenen += s;
+            if (ca === cb) { ortak++; ortakDers[q.dersId] = (ortakDers[q.dersId] || 0) + 1; }
+          });
+          if (!ortak) continue;
+          // Poisson-binom kuyruğu: P(X ≥ ortak)
+          let dag = [1];
+          for (const s of olas) {
+            const yeni = new Array(dag.length + 1).fill(0);
+            dag.forEach((v, k) => { yeni[k] += v * (1 - s); yeni[k + 1] += v * s; });
+            dag = yeni;
+          }
+          const p = Math.min(1, dag.slice(ortak).reduce((t, v) => t + v, 0));
+          ciftler.push({ a: A.no, b: B.no, sinifA: A.sinif, sinifB: B.sinif, kitapcik, ortak, ortakDers, ortakBos, ikisiYanlis, farkli, beklenen, oran: farkli ? ortak / farkli : null, p });
+        }
+      }
+    }
+    ciftler.forEach(c => { c.pDuzeltilmis = Math.min(1, c.p * ciftSayisi); c.duzey = c.pDuzeltilmis < 0.001 ? 'guclu' : c.pDuzeltilmis < 0.05 ? 'dikkat' : ''; });
+    ciftler.sort((x, y) => x.p - y.p || y.ortak - x.ortak);
+    return { kagit: kagitlar.length, ciftSayisi, ciftler };
+  }
+
+  /* Öğrencinin bu sınavdaki T puanının önceki denemelerine göre sapması (kopya analizinde bilgi olarak).
+   * Net yerine T: sınavların zorluğu ve soru sayısı farklıdır. Önceki = bu sınavdan önceki en çok 5 deneme;
+   * en az 2 önceki deneme yoksa null. dersler: ders adına göre aynı hesap (ders T puanıyla). */
+  function oncekiSapma(hesaplar, sinavId, no, enCok = 5) {
+    const g = ogrenciGelisimi(hesaplar, no);
+    const simdi = g.find(x => x.sinavId === sinavId);
+    if (!simdi || simdi.t == null) return null;
+    const onceki = g.filter(x => x.sinavId !== sinavId && String(x.tarih) < String(simdi.tarih));
+    const ozet = (deger) => {
+      const v = onceki.map(deger).filter(z => z != null).slice(-enCok);
+      return v.length >= 2 ? { onceki: v.reduce((t, z) => t + z, 0) / v.length, n: v.length } : null;
+    };
+    const top = ozet(x => x.t);
+    if (!top) return null;
+    const dersler = {};
+    for (const d of simdi.dersler) {
+      if (d.t == null) continue;
+      const o = ozet(x => { const e = x.dersler.find(z => z.ad === d.ad); return e ? e.t : null; });
+      if (o) dersler[d.id] = { ad: d.ad, simdi: d.t, ...o, fark: d.t - o.onceki };
+    }
+    return { simdi: simdi.t, ...top, fark: simdi.t - top.onceki, dersler };
+  }
+
+  /* ---------- YKS puan tahmini ----------
+   * ÖSYM yöntemi (YKS Kılavuzu 3.10.1): her testte ham puan = doğru − yanlış ÷ 4; ham puan son sınıf adaylarının
+   * ortalama ve standart sapmasıyla 50 + 10z standart puana çevrilir; standart puanlar Tablo 1C / 1E ağırlıklarıyla
+   * toplanır (A-puan; SAY, EA ve SÖZ'e A-TYT'nin %40'ı da girer) ve A-puan kendi içinde 100–500'e doğrusal yayılır.
+   * Ortalama ve sapmalar 2026 YKS Sayısal Bilgiler'den. ÖSYM 100 ve 500'ün karşılığı olan A-puanlarını yayımlamaz;
+   * min / max, araclar/puan_kalibrasyon.py ile 2026 puan dağılımından tahmin edildi. Sonuç tahminidir; OBP eklenmez.
+   * Netler hiçbir zaman büyütülmez: bir testin sınavdaki soru sayısı ÖSYM'dekinden fazlaysa net ÖSYM soru sayısına
+   * oranla küçültülür, azsa olduğu gibi alınır (ara sınıf denemesinde sorulmayan konular "yapılmış" sayılmaz). */
+  const OSYM = {
+    yil: 2026,
+    test: {
+      tr: { ad: 'Türkçe', ort: 20.5, ss: 8.4, soru: 40 },
+      sos: { ad: 'Sosyal Bilimler', ort: 10.2, ss: 3.9, soru: 20 },
+      tmat: { ad: 'Temel Matematik', ort: 6.8, ss: 8.0, soru: 40 },
+      fen: { ad: 'Fen Bilimleri', ort: 4.3, ss: 5.3, soru: 20 },
+      tde: { ad: 'Türk Dili ve Edebiyatı', ort: 6.1, ss: 5.2, soru: 23 }, // soru: o yılın geçerli soru sayısı (2026'da 1 iptal)
+      tar1: { ad: 'Tarih-1', ort: 2.6, ss: 2.7, soru: 10 },
+      cog1: { ad: 'Coğrafya-1', ort: 1.7, ss: 1.8, soru: 6 },
+      tar2: { ad: 'Tarih-2', ort: 1.7, ss: 2.3, soru: 11 },
+      cog2: { ad: 'Coğrafya-2', ort: 2.1, ss: 2.5, soru: 11 },
+      fel: { ad: 'Felsefe Grubu', ort: 1.6, ss: 2.1, soru: 12 },
+      dkab: { ad: 'Din Kültürü', ort: 1.9, ss: 2.2, soru: 6 },
+      mat: { ad: 'Matematik', ort: 7.0, ss: 9.1, soru: 39 }, // 2026'da 1 iptal; max bu sayıyla hesaplandı
+      fiz: { ad: 'Fizik', ort: 2.7, ss: 3.7, soru: 14 },
+      kim: { ad: 'Kimya', ort: 2.2, ss: 3.7, soru: 13 },
+      bio: { ad: 'Biyoloji', ort: 3.0, ss: 3.6, soru: 13 },
+    },
+    // kosul: puan için gruplardan en az birinde 0,5 ham puan (Kılavuz Tablo 1D; grup ÖSYM'de tek testtir, ör. Fen Bilimleri)
+    tur: {
+      TYT: { ad: 'TYT', agirlik: { tr: 0.33, sos: 0.17, tmat: 0.33, fen: 0.17 }, kosul: [['tr'], ['tmat']], min: 31.76, max: 80.66 },
+      SAY: { ad: 'SAY', agirlik: { mat: 0.30, fiz: 0.10, kim: 0.10, bio: 0.10 }, kosul: [['mat'], ['fiz', 'kim', 'bio']], min: 38.88, max: 81.57 },
+      EA: { ad: 'EA', agirlik: { mat: 0.30, tde: 0.18, tar1: 0.07, cog1: 0.05 }, kosul: [['mat'], ['tde', 'tar1', 'cog1']], min: 38.12, max: 81.78 },
+      SOZ: { ad: 'SÖZ', agirlik: { tde: 0.18, tar1: 0.07, cog1: 0.05, tar2: 0.08, cog2: 0.08, fel: 0.09, dkab: 0.05 }, kosul: [['tde', 'tar1', 'cog1'], ['tar2', 'cog2', 'fel', 'dkab']], min: 40.54, max: 82.70 },
+    },
+    tytPayi: 0.40,
+  };
+
+  // Ders adı karşılaştırması için: küçük harf, Türkçe harfler sadeleşir ("FIZIK", "Cografya", "Tarih-II" → fizik, cografya, tarih-ii)
+  const sade = (s) => String(s || '').toLocaleLowerCase('tr').replace(/ı/g, 'i').normalize('NFD').replace(/\p{M}/gu, '');
+
+  // Ara sınıf ve TYT denemesinde dersin girdiği TYT testi
+  function tytTesti(ders) {
+    const a = sade(ders.ad);
+    if (/turkce|edebiyat|turk dili|dil ve anlatim/.test(a)) return 'tr';
+    if (/matematik|geometri/.test(a)) return 'tmat';
+    if (/sosyal|tarih|cografya|felsefe|\bdin\b|mantik|psikoloji|sosyoloji|inkilap/.test(a)) return 'sos';
+    if (/\bfen\b|fizik|kimya|biyoloji/.test(a)) return 'fen';
+    return null;
+  }
+
+  /* AYT denemesinde dersin testi; "Sosyal Bilimler-1", "Fen Bilimleri" gibi birleşik dersler ayrılamaz (null).
+   * Tarih / Coğrafya düzeyi yalnız adın hemen ardındaki 1, 2, I, II'den okunur ("12. Sınıf Tarih" düzey değildir);
+   * yoksa soru sayısından. İnkılap ve Çağdaş Tarih AYT testi değildir. */
+  function aytTesti(ders) {
+    const a = sade(ders.ad);
+    const duzey = (ad) => { const m = a.match(new RegExp(ad + '\\s*[-–]?\\s*(ii|2|i|1)(?![a-z0-9])')); return m ? (m[1] === 'ii' || m[1] === '2' ? 2 : 1) : (ders.soru >= 11 ? 2 : 1); };
+    if (/edebiyat|turk dili/.test(a)) return 'tde';
+    if (/inkilap|cagdas/.test(a)) return null;
+    if (/tarih/.test(a)) return duzey('tarih') === 2 ? 'tar2' : 'tar1';
+    if (/cografya/.test(a)) return duzey('cografya') === 2 ? 'cog2' : 'cog1';
+    if (/felsefe|mantik|psikoloji|sosyoloji/.test(a)) return 'fel';
+    if (/\bdin\b/.test(a)) return 'dkab';
+    if (/matematik|geometri/.test(a)) return 'mat';
+    if (/fizik/.test(a)) return 'fiz';
+    if (/kimya/.test(a)) return 'kim';
+    if (/biyoloji/.test(a)) return 'bio';
+    return null;
+  }
+
+  // Sınavın derslerini testlere eşler: soru = testin sınavdaki geçerli soru sayısı, olcek = min(1, ÖSYM ÷ sınav)
+  function testBilgisi(sinav, esle) {
+    const ders = {}, soru = {}, kitapcik = {}, olcek = {};
+    for (const d of sinav.dersler) {
+      const k = esle(d);
+      if (!k) continue;
+      ders[d.id] = k;
+      soru[k] = (soru[k] || 0) + (gecerliSoru(d) || d.soru);
+      kitapcik[k] = (kitapcik[k] || 0) + d.soru; // iptal sorular dahil (tür tanımada)
+    }
+    for (const k of Object.keys(soru)) olcek[k] = Math.min(1, OSYM.test[k].soru / soru[k]);
+    return { ders, soru, kitapcik, olcek };
+  }
+
+  /* Puan türü kendiliğinden: dersleri TYT'deki gibi 40/20/40/20 ise 'tyt'; 11. sınıf ve üstünde Türkçe yokken
+   * AYT dersleri varsa 'ayt'; geri kalanı 'ara' (TYT'ye yaklaşık). Koç sinav.puanTuru ile değiştirebilir ('yok' dahil). */
+  function puanTuruTahmin(sinav) {
+    const s = testBilgisi(sinav, tytTesti).kitapcik;
+    if (s.tr === 40 && s.sos === 20 && s.tmat === 40 && s.fen === 20) return 'tyt';
+    const adlar = sinav.dersler.map(d => sade(d.ad));
+    if ((sinav.seviye == null || sinav.seviye >= 11) && !adlar.some(a => /turkce/.test(a)) && sinav.dersler.some(d => { const k = aytTesti(d); return k && k !== 'mat'; })) return 'ayt';
+    return 'ara';
+  }
+  function puanTuru(sinav) {
+    return ['tyt', 'ayt', 'ara', 'yok'].includes(sinav.puanTuru) ? sinav.puanTuru : puanTuruTahmin(sinav);
+  }
+
+  /* AYT denemesinin TYT eşi: koçun seçtiği (silinmişse kendiliğinden olana dönülür) ya da 14 gün içindeki TYT denemesi
+   * (önce aynı yayın, sonra en yakın tarih). */
+  function tytEsiBul(sinav, sinavlar) {
+    const secili = sinav.tytEsi && sinavlar.find(s => s.id === sinav.tytEsi && s.id !== sinav.id);
+    if (secili) return secili;
+    const gun = (t) => Date.parse(t) / 864e5;
+    const g0 = gun(sinav.tarih);
+    if (isNaN(g0)) return null;
+    const adaylar = sinavlar.filter(s => s.id !== sinav.id && puanTuru(s) === 'tyt' && Math.abs(gun(s.tarih) - g0) <= 14);
+    const ayni = (s) => Number(!!(s.yayin && s.yayin === sinav.yayin));
+    adaylar.sort((a, b) => (ayni(b) - ayni(a))
+      || Math.abs(gun(a.tarih) - g0) - Math.abs(gun(b.tarih) - g0) || gun(a.tarih) - gun(b.tarih));
+    return adaylar[0] || null;
+  }
+
+  // Öğrencinin test netleri (ÖSYM kuralı: 4 yanlış 1 doğruyu götürür), ölçekli; girdiği ders yoksa null
+  function testNetleri(satir, bilgi) {
+    if (!satir) return null;
+    const ham = {};
+    let girdi = false;
+    for (const [dersId, k] of Object.entries(bilgi.ders)) {
+      const p = satir.dersler[dersId]; // girmediği ders boş sayılır (ÖSYM'de boş = 0)
+      ham[k] = (ham[k] || 0) + (p ? p.d - p.y / 4 : 0);
+      if (p) girdi = true;
+    }
+    if (!girdi) return null;
+    const net = {};
+    for (const k of Object.keys(bilgi.soru)) net[k] = (ham[k] || 0) * bilgi.olcek[k];
+    return net;
+  }
+
+  const aPuan = (net, agirlik) => Object.entries(agirlik).reduce((t, [k, w]) => t + w * (50 + 10 * ((net[k] || 0) - OSYM.test[k].ort) / OSYM.test[k].ss), 0);
+  const uygunMu = (net, kosul) => kosul.some(g => g.reduce((t, k) => t + (net[k] || 0), 0) >= 0.5);
+  const olcekle = (a, tur) => Math.max(100, Math.min(500, 100 + 400 * (a - tur.min) / (tur.max - tur.min)));
+
+  /* Bir net, puana kaç puan ekler (puan türüne göre; TYT testleri SAY / EA / SÖZ'de %40 ağırlıkla). */
+  function netDegeri(turAd) {
+    const tur = OSYM.tur[turAd];
+    const k = 400 / (tur.max - tur.min);
+    const sonuc = {};
+    if (turAd !== 'TYT') for (const [t, w] of Object.entries(OSYM.tur.TYT.agirlik)) sonuc[t] = k * OSYM.tytPayi * w * 10 / OSYM.test[t].ss;
+    for (const [t, w] of Object.entries(tur.agirlik)) sonuc[t] = k * w * 10 / OSYM.test[t].ss;
+    return sonuc;
+  }
+
+  /* Sınavın puanları: { tur, turler:['TYT'] ya da ['SAY','EA','SOZ'], ogrenci: Map(no → {TYT|SAY|EA|SOZ: puan|null, net}),
+   * bilgi (test eşlemesi ve ölçek), uyari:[metin] }. AYT için TYT eşinin hesabı (sinavHesapla çıktısı) verilir. */
+  function puanHesapla(hesap, tytHesap) {
+    const sinav = hesap.sinav;
+    const tur = puanTuru(sinav);
+    const sonuc = { tur, turler: [], ogrenci: new Map(), bilgi: null, uyari: [] };
+    if (tur === 'yok') return sonuc;
+    const tytBilgi = (s) => {
+      const b = testBilgisi(s, tytTesti);
+      const eksik = Object.keys(OSYM.tur.TYT.agirlik).filter(k => !b.soru[k]);
+      return { b, eksik };
+    };
+    if (tur === 'tyt' || tur === 'ara') {
+      const { b, eksik } = tytBilgi(sinav);
+      sonuc.bilgi = b;
+      if (eksik.length) { sonuc.uyari.push(`Puan hesaplanmadı: sınavda ${eksik.map(k => OSYM.test[k].ad).join(', ')} dersi yok.`); return sonuc; }
+      sonuc.turler = ['TYT'];
+      for (const s of hesap.satirlar) {
+        if (s.no == null || s.no === '') continue; // numarasız kâğıt öğrenciye bağlanamaz
+        const net = testNetleri(s, b);
+        sonuc.ogrenci.set(String(s.no), { net, TYT: net && uygunMu(net, OSYM.tur.TYT.kosul) ? olcekle(aPuan(net, OSYM.tur.TYT.agirlik), OSYM.tur.TYT) : null });
+      }
+      return sonuc;
+    }
+    // AYT
+    const b = testBilgisi(sinav, aytTesti);
+    sonuc.bilgi = b;
+    sonuc.turler = ['SAY', 'EA', 'SOZ'].filter(t => Object.keys(OSYM.tur[t].agirlik).every(k => b.soru[k]));
+    if (!sonuc.turler.length) { sonuc.uyari.push('Puan hesaplanmadı: AYT testleri tanınmadı. Dersler ayrı ayrı (Matematik, Fizik, Kimya, Biyoloji, Edebiyat, Tarih-1, Coğrafya-1 …) girilmiş olmalı.'); return sonuc; }
+    const ty = tytHesap ? tytBilgi(tytHesap.sinav) : null;
+    if (!ty) { sonuc.uyari.push('SAY / EA / SÖZ puanına TYT de girer: bu AYT denemesinin TYT eşi bulunamadı. Aşağıdan TYT eşini seçin.'); }
+    else if (ty.eksik.length) { sonuc.uyari.push(`Seçilen TYT eşinde ${ty.eksik.map(k => OSYM.test[k].ad).join(', ')} dersi yok; puan hesaplanmadı.`); }
+    for (const s of hesap.satirlar) {
+      if (s.no == null || s.no === '') continue;
+      const net = testNetleri(s, b);
+      const kayit = { net };
+      const tytNet = ty && !ty.eksik.length ? testNetleri(tytHesap.satirlar.find(x => String(x.no) === String(s.no)), ty.b) : null;
+      const aTyt = tytNet && uygunMu(tytNet, OSYM.tur.TYT.kosul) ? aPuan(tytNet, OSYM.tur.TYT.agirlik) : null;
+      kayit.tytYok = aTyt == null;
+      for (const t of sonuc.turler) {
+        const T = OSYM.tur[t];
+        kayit[t] = aTyt != null && net && uygunMu(net, T.kosul) ? olcekle(OSYM.tytPayi * aTyt + aPuan(net, T.agirlik), T) : null;
+      }
+      sonuc.ogrenci.set(String(s.no), kayit);
+    }
+    return sonuc;
+  }
+
   /* Öğrencinin sınavlar arası gelişimi (ders adıyla eşleşir; tarih sırasına göre). */
   function ogrenciGelisimi(hesaplar, no) {
     return hesaplar
@@ -415,6 +742,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
           sinifSira: s.sinifSira, sinifKisi: sinifOrt ? sinifOrt.kisi : null,
           genelOrt: h.genel.toplam, sinifOrt: sinifOrt ? sinifOrt.toplam : null,
           basari: s.basari, genelBasari: h.genel.basari, sinifBasari: sinifOrt ? sinifOrt.basari : null,
+          z: s.z, t: s.t,
           dersler: h.sinav.dersler.filter(d => s.dersler[d.id]).map(d => ({
             id: d.id, ad: d.ad, soru: d.soru, ...s.dersler[d.id],
             genelOrt: h.genel.dersler[d.id] ? h.genel.dersler[d.id].net : null,
@@ -450,8 +778,12 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     const rapor = { yeniSinav: 0, guncelSinav: 0, yeniOgrenci: 0, kazanim: 0 };
     const sinavlar = new Map(d.sinavlar.map(s => [s.id, s]));
     for (const s of gelen.sinavlar || []) {
-      if (sinavlar.has(s.id)) rapor.guncelSinav++; else rapor.yeniSinav++;
-      sinavlar.set(s.id, s);
+      const eski = sinavlar.get(s.id);
+      if (eski) rapor.guncelSinav++; else rapor.yeniSinav++;
+      // koçun uygulamada yaptığı seçimler yeniden aktarımda kaybolmasın
+      const yeni = { ...s };
+      if (eski) for (const k of ['puanTuru', 'tytEsi']) if (eski[k] != null && yeni[k] == null) yeni[k] = eski[k];
+      sinavlar.set(s.id, yeni);
     }
     d.sinavlar = [...sinavlar.values()].sort((a, b) => String(a.tarih).localeCompare(String(b.tarih)));
     const ogr = new Map(d.ogrenciler.map(o => [String(o.no), o]));
@@ -468,11 +800,19 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     const konu = new Map((d.konular || []).map(k => [k.id, k]));
     for (const k of gelen.konular || []) konu.set(k.id, { ...konu.get(k.id), ...k });
     d.konular = [...konu.values()];
+    // telefonla okunan sınavların tanımı ve kâğıtları (Aşama 2): aynı kimlikte yeni değiştirilmiş olan kalır
+    const optik = new Map((d.optik || []).map(o => [o.id, o]));
+    for (const o of Array.isArray(gelen.optik) ? gelen.optik : []) {
+      if (!o || !o.id) continue;
+      const eski = optik.get(o.id);
+      if (!eski || (o.degisti || 0) >= (eski.degisti || 0)) optik.set(o.id, o);
+    }
+    d.optik = [...optik.values()];
     return { durum: d, rapor };
   }
 
   function bosDurum() {
-    return { bicim: 'deneme-takip/durum', surum: 1, sinavlar: [], ogrenciler: [], kazanimlar: [], konular: [], ayarlar: {} };
+    return { bicim: 'deneme-takip/durum', surum: 1, sinavlar: [], ogrenciler: [], kazanimlar: [], konular: [], optik: [], ayarlar: {} };
   }
 
   /* Bir dosyanın uygulamaya uygun olup olmadığını denetler; sorun listesini döner. */
@@ -484,6 +824,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     if (!Array.isArray(veri.ogrenciler)) sorun.push('Öğrenci listesi yok.');
     if ('kazanimlar' in veri && !Array.isArray(veri.kazanimlar)) sorun.push('Kazanım listesi bozuk.');
     if ('konular' in veri && !Array.isArray(veri.konular)) sorun.push('Konu listesi bozuk.');
+    if ('optik' in veri && !Array.isArray(veri.optik)) sorun.push('Optik sınav listesi bozuk.');
     const sayiMi = (x) => typeof x === 'number' && Number.isFinite(x);
     for (const s of Array.isArray(veri.sinavlar) ? veri.sinavlar : []) {
       if (!s || !s.id || !Array.isArray(s.dersler) || !s.dersler.length || !Array.isArray(s.kagitlar)) { sorun.push(`Sınav eksik: ${(s && (s.ad || s.id)) || '?'}`); continue; }
@@ -501,21 +842,789 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
         if (!a || a.length !== d.soru) sorun.push(`${s.ad} / ${d.ad}: anahtar soru sayısıyla uyuşmuyor.`);
       }
     }
+    // optik sınav kaydı (Aşama 2): ekranların dayandığı alanlar
+    for (const o of Array.isArray(veri.optik) ? veri.optik : []) {
+      const ad = (o && (o.ad || o.id)) || '?';
+      if (!o || typeof o.id !== 'string' || typeof o.ad !== 'string' || !Array.isArray(o.dersler) || !o.dersler.length || !Array.isArray(o.kagitlar)) { sorun.push(`Optik sınav eksik: ${ad}`); continue; }
+      if ((o.secenek != null && ![4, 5].includes(o.secenek)) || (o.seviye != null && !Number.isInteger(o.seviye)) || !sayiMi(o.ceza || 0) || (o.tarih && !/^\d{4}-\d{2}-\d{2}$/.test(o.tarih))) sorun.push(`Optik sınav ${ad}: tanım bozuk.`);
+      if (o.dersler.some(d => !d || typeof d.id !== 'string' || typeof d.ad !== 'string' || !Number.isInteger(d.soru) || d.soru < 1 || !d.anahtar || !Array.isArray(d.anahtar.A) || d.anahtar.A.length !== d.soru || (d.anahtar.B != null && !Array.isArray(d.anahtar.B)))) sorun.push(`Optik sınav ${ad}: ders ya da anahtar bozuk.`);
+      if (o.kagitlar.some(k => !k || !/^\d+$/.test(String(k.no)) || !['A', 'B'].includes(k.kitapcik) || !Array.isArray(k.cevaplar) || k.cevaplar.length !== o.dersler.length || k.cevaplar.some(c => typeof c !== 'string'))) sorun.push(`Optik sınav ${ad}: bozuk kâğıt.`);
+    }
     return sorun;
   }
 
-  const Motor = { HARFLER, yuvarla, puanla, sirala, dersAnahtari, gecerliSoru, sinavHesapla, soruAnalizi, kazanimAnalizi, konuTakibi, ogrenciGelisimi, tpDenetle, birlestir, bosDurum, dogrula };
+  const Motor = { HARFLER, OSYM, yuvarla, puanla, sirala, dersAnahtari, gecerliSoru, sinavHesapla, soruAnalizi, kazanimAnalizi, konuTakibi, kopyaAnalizi, oncekiSapma, puanTuru, puanTuruTahmin, tytEsiBul, puanHesapla, netDegeri, ogrenciGelisimi, tpDenetle, birlestir, bosDurum, dogrula };
   if (typeof module !== 'undefined' && module.exports) module.exports = Motor;
   else kok.Motor = Motor;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>/* Deneme Takip · optik form (Aşama 2): form düzeni, baskı için SVG ve fotoğraftan okuma.
+ * Saf işlevler; tarayıcıda ve Node'da çalışır, dış kitaplık yok.
+ *
+ * Form A4 dikey, ölçüler mm. Altı kare işaret (dört köşe ve iki yan ortası) fotoğraftaki sayfayı forma oturtur;
+ * sayfa ortadan bükülse de üst ve alt yarı ayrı oturtulur. Üstteki kod şeridi (3 × 40 hücre) sınav kodunu, seçenek
+ * sayısını ve derslerin soru sayılarını taşır: okuyucu sınav verisi olmadan formun düzenini bilir (telefonda okuma).
+ * Okuma sonucu motorun kâğıt biçimine çevrilir: cevap dizisinde A..E, '-' boş, '*' çift işaret.
+ */
+(function (kok) {
+  'use strict';
+
+  const SAYFA = { w: 210, h: 297 };
+  const ISARET = { boy: 6, x: [12, 198], y: [12, 148.5, 285] };
+  const KOD = { x: 45, y: 9, adim: 3, dolu: 2, sutun: 40, satir: 3 };
+  const ALAN = { x0: 19, x1: 191, y0: 92, y1: 282 };
+  const SATIR = 5, ARALIK = 5, YARICAP = 2, NO_GEN = 5.6, SUTUN_ARA = 3;
+  const NO = { hane: 5, x: 22, y: 46, dx: 5.2, dy: 4.4 };
+  const KITAPCIK = { x: 58, y: 46, dy: 5.2, harf: 'AB' };
+  const EN_COK_DERS = 12, EN_COK_SORU = 63, SURUM = 1;
+  const HARF = 'ABCDE';
+
+  // ---------------------------------------------------------------- kod şeridi
+  function crc16(bitler) {
+    let c = 0xffff;
+    for (const b of bitler) {
+      const ust = ((c >> 15) & 1) ^ b;
+      c = (c << 1) & 0xffff;
+      if (ust) c ^= 0x1021;
+    }
+    return c;
+  }
+  const yaz = (dizi, deger, n) => { for (let i = n - 1; i >= 0; i--) dizi.push((deger >> i) & 1); };
+  const oku = (dizi, bas, n) => { let v = 0; for (let i = 0; i < n; i++) v = v * 2 + dizi[bas + i]; return v; };
+
+  function kodla(tanim) {
+    const b = [];
+    yaz(b, SURUM, 3);
+    yaz(b, tanim.secenek === 4 ? 1 : 0, 1);
+    yaz(b, tanim.kod, 20);
+    yaz(b, tanim.sorular.length, 4);
+    for (let i = 0; i < EN_COK_DERS; i++) yaz(b, tanim.sorular[i] || 0, 6);
+    while (b.length < KOD.sutun * KOD.satir - 16) b.push(0);
+    yaz(b, crc16(b), 16);
+    return b;
+  }
+
+  function kodCoz(b) {
+    if (b.length !== KOD.sutun * KOD.satir) return null;
+    const veri = b.slice(0, b.length - 16);
+    if (crc16(veri) !== oku(b, b.length - 16, 16)) return null;
+    if (oku(b, 0, 3) !== SURUM) return null;
+    const n = oku(b, 24, 4);
+    if (!n || n > EN_COK_DERS) return null;
+    const sorular = [];
+    for (let i = 0; i < n; i++) sorular.push(oku(b, 28 + 6 * i, 6));
+    if (sorular.some(s => !s)) return null;
+    return { secenek: oku(b, 3, 1) ? 4 : 5, kod: oku(b, 4, 20), sorular };
+  }
+
+  // Sınav kimliğinden 20 bitlik form kodu (FNV-1a)
+  function formKodu(kimlik) {
+    let h = 0x811c9dc5;
+    for (const ch of String(kimlik)) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+    return (h ^ (h >>> 20)) & 0xfffff;
+  }
+
+  /* Sınavdan form tanımı: { kod, secenek, sorular:[soru sayısı], adlar:[ders adı] } */
+  function formTanimi(sinav) {
+    return {
+      kod: formKodu(sinav.id),
+      secenek: sinav.secenek === 4 ? 4 : 5,
+      sorular: sinav.dersler.map(d => d.soru),
+      adlar: sinav.dersler.map(d => d.ad),
+    };
+  }
+
+  // ---------------------------------------------------------------- düzen
+  /* Sorular sütunlara akıtılır; her ders bir başlık satırıyla başlar, başlık sütun dibinde yalnız kalmaz,
+   * sütun değiştiren ders yeni sütunda "(devam)" başlığıyla sürer.
+   * Sığmazsa { hata } döner. Düzen yalnız seçenek ve soru sayılarına bağlıdır (okuyucu aynı düzeni kurar). */
+  function formDuzeni(tanim) {
+    const sorular = tanim.sorular;
+    if (!sorular.length) return { hata: 'Sınavda ders yok.' };
+    if (sorular.length > EN_COK_DERS) return { hata: `Formda en çok ${EN_COK_DERS} ders olabilir.` };
+    if (sorular.some(s => !(s >= 1 && s <= EN_COK_SORU))) return { hata: `Bir derste en çok ${EN_COK_SORU} soru olabilir.` };
+    const sec = tanim.secenek === 4 ? 4 : 5;
+    const gen = NO_GEN + sec * ARALIK;
+    const C = Math.floor((ALAN.x1 - ALAN.x0 + SUTUN_ARA) / (gen + SUTUN_ARA));
+    const R = Math.floor((ALAN.y1 - ALAN.y0) / SATIR);
+    const x0 = ALAN.x0 + (ALAN.x1 - ALAN.x0 - (C * gen + (C - 1) * SUTUN_ARA)) / 2;
+    const yer = (s) => ({ x: x0 + Math.floor(s / R) * (gen + SUTUN_ARA), y: ALAN.y0 + (s % R + 0.5) * SATIR });
+    const basliklar = [], kabarcik = [];
+    let s = 0;
+    sorular.forEach((n, d) => {
+      if (s % R === R - 1) s++;
+      basliklar.push({ ders: d, ...yer(s) });
+      s++;
+      for (let q = 0; q < n; q++) {
+        // ders sütun değiştiriyorsa yeni sütunun başına "(devam)" başlığı
+        if (q > 0 && s % R === 0) { basliklar.push({ ders: d, devam: true, ...yer(s) }); s++; }
+        const p = yer(s);
+        kabarcik.push({ ders: d, soru: q, x: p.x, y: p.y, cx: Array.from({ length: sec }, (_, c) => p.x + NO_GEN + ARALIK * (c + 0.5)) });
+        s++;
+      }
+    });
+    if (s > C * R) return { hata: `Sorular tek sayfaya sığmıyor (en çok ${C * R} satır; bu sınav ${s}).` };
+    return { tanim: { ...tanim, secenek: sec }, secenek: sec, sutun: C, satir: R, sutunGen: gen, basliklar, kabarcik };
+  }
+
+  // ---------------------------------------------------------------- baskı (SVG)
+  const kac = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const f = (x) => Math.round(x * 100) / 100;
+
+  function formSvg(tanim, ek = {}) {
+    const d = formDuzeni(tanim);
+    if (d.hata) throw new Error(d.hata);
+    const p = [];
+    const kare = (x, y, a) => p.push(`<rect x="${f(x)}" y="${f(y)}" width="${f(a)}" height="${f(a)}"/>`);
+    const yazi = (x, y, t, o = '') => p.push(`<text x="${f(x)}" y="${f(y)}" ${o}>${kac(t)}</text>`);
+    const yuvarlak = (x, y, harf) => {
+      p.push(`<circle cx="${f(x)}" cy="${f(y)}" r="${YARICAP}" fill="none" stroke="#000" stroke-width="0.22"/>`);
+      if (harf) yazi(x, y + 0.8, harf, 'font-size="2.3" fill="#8a8a8a" text-anchor="middle"');
+    };
+    for (const x of ISARET.x) for (const y of ISARET.y) kare(x - ISARET.boy / 2, y - ISARET.boy / 2, ISARET.boy);
+    kodla(tanim).forEach((b, i) => {
+      if (b) kare(KOD.x + (i % KOD.sutun) * KOD.adim + (KOD.adim - KOD.dolu) / 2, KOD.y + Math.floor(i / KOD.sutun) * KOD.adim + (KOD.adim - KOD.dolu) / 2, KOD.dolu);
+    });
+    // uzun sınav adı sağdaki tarihe taşmasın (kabaca 2,6 mm/harf)
+    const baslik = ek.baslik || 'Deneme', baslikYer = ALAN.x1 - ALAN.x0 - 28;
+    yazi(ALAN.x0, 25, baslik, 'font-size="4.6" font-weight="700"' +
+      (baslik.length * 2.6 > baslikYer ? ` textLength="${f(baslikYer)}" lengthAdjust="spacingAndGlyphs"` : ''));
+    yazi(ALAN.x1, 25, ek.altBaslik || '', 'font-size="3" text-anchor="end" fill="#444"');
+    yazi(ALAN.x0, 33, 'Ad Soyad: ..........................................................    Sınıf: ...........', 'font-size="3.2"');
+    // Okul numarası: yazma kutuları ve 0-9 sütunları
+    yazi(NO.x - 2.4, 39, 'OKUL NO', 'font-size="2.8" font-weight="700"');
+    for (let hane = 0; hane < NO.hane; hane++) {
+      const x = NO.x + hane * NO.dx;
+      p.push(`<rect x="${f(x - 2.3)}" y="40" width="4.6" height="3.6" fill="none" stroke="#000" stroke-width="0.2"/>`);
+      for (let r = 0; r < 10; r++) yuvarlak(x, NO.y + r * NO.dy, String(r));
+    }
+    yazi(KITAPCIK.x - 3, 39, 'KİTAPÇIK', 'font-size="2.8" font-weight="700"');
+    [...KITAPCIK.harf].forEach((h, i) => yuvarlak(KITAPCIK.x, KITAPCIK.y + i * KITAPCIK.dy, h));
+    const yonerge = ['Yuvarlağı kurşun kalemle tamamen doldurun.', 'Değiştirirken eskisini iz kalmayacak biçimde silin.',
+      'Okul numaranızı kutulara yazıp altında kodlayın.', 'Kâğıdı katlamayın; köşelerdeki kareleri kapatmayın.'];
+    yonerge.forEach((t, i) => yazi(76, 44 + i * 5, '• ' + t, 'font-size="3"'));
+    p.push(`<circle cx="80" cy="70" r="${YARICAP}" fill="#000"/>`);
+    yazi(84, 71, 'doğru', 'font-size="2.8"');
+    p.push(`<circle cx="102" cy="70" r="${YARICAP}" fill="none" stroke="#000" stroke-width="0.22"/><path d="M100.6 68.6l2.8 2.8M103.4 68.6l-2.8 2.8" stroke="#000" stroke-width="0.4"/>`);
+    yazi(106, 71, 'yanlış', 'font-size="2.8"');
+    p.push(`<circle cx="124" cy="70" r="${YARICAP}" fill="none" stroke="#000" stroke-width="0.22"/><path d="M122.8 70.2l0.9 1l1.6-2.2" stroke="#000" stroke-width="0.4" fill="none"/>`);
+    yazi(128, 71, 'yanlış', 'font-size="2.8"');
+    // Cevap alanı
+    const adlar = tanim.adlar || [];
+    for (const b of d.basliklar) {
+      p.push(`<rect x="${f(b.x)}" y="${f(b.y - 2.2)}" width="${f(d.sutunGen)}" height="4.4" fill="#e6e6e6"/>`);
+      const ad = (adlar[b.ders] || `Ders ${b.ders + 1}`) + (b.devam ? ' (devam)' : '');
+      // uzun ad yan sütuna taşmasın: kabaca 1,7 mm/harf; taşacaksa sütun genişliğine sıkıştır
+      const sigar = d.sutunGen - 2;
+      yazi(b.x + 1, b.y + 1, ad, 'font-size="2.9" font-weight="700"' +
+        (ad.length * 1.7 > sigar ? ` textLength="${f(sigar)}" lengthAdjust="spacingAndGlyphs"` : ''));
+    }
+    for (const k of d.kabarcik) {
+      yazi(k.x + NO_GEN - 1, k.y + 1, k.soru + 1, 'font-size="2.8" text-anchor="end"');
+      k.cx.forEach((x, c) => yuvarlak(x, k.y, HARF[c]));
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${SAYFA.w}mm" height="${SAYFA.h}mm" viewBox="0 0 ${SAYFA.w} ${SAYFA.h}" font-family="Arial, Helvetica, sans-serif">
+<rect width="${SAYFA.w}" height="${SAYFA.h}" fill="#fff"/>
+${p.join('\n')}
+</svg>`;
+  }
+
+  // ---------------------------------------------------------------- görüntü yardımcıları
+  /* RGBA (ImageData.data) → gri; en uzun kenar `enCok` pikseli aşmayacak biçimde kutu ortalamasıyla küçültülür. */
+  function griyeCevir(rgba, w, h, enCok = 2400) {
+    const k = Math.max(1, Math.ceil(Math.max(w, h) / enCok));
+    const W = Math.floor(w / k), H = Math.floor(h / k);
+    const g = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let t = 0;
+      for (let j = 0; j < k; j++) for (let i = 0; i < k; i++) {
+        const o = ((y * k + j) * w + x * k + i) * 4;
+        t += rgba[o] * 0.299 + rgba[o + 1] * 0.587 + rgba[o + 2] * 0.114;
+      }
+      g[y * W + x] = t / (k * k);
+    }
+    return { g, w: W, h: H };
+  }
+
+  function kucult(im, enCok) {
+    const k = Math.max(1, Math.ceil(Math.max(im.w, im.h) / enCok));
+    if (k === 1) return { ...im, k: 1 };
+    const W = Math.floor(im.w / k), H = Math.floor(im.h / k);
+    const g = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let t = 0;
+      for (let j = 0; j < k; j++) { const o = (y * k + j) * im.w + x * k; for (let i = 0; i < k; i++) t += im.g[o + i]; }
+      g[y * W + x] = t / (k * k);
+    }
+    return { g, w: W, h: H, k };
+  }
+
+  function piksel(im, x, y) {
+    if (x < 0 || y < 0 || x > im.w - 1.001 || y > im.h - 1.001) return 255;
+    const x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0, o = y0 * im.w + x0;
+    const a = im.g[o], b = im.g[o + 1], c = im.g[o + im.w], d = im.g[o + im.w + 1];
+    return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+  }
+
+  // 4 nokta eşlemesinden izdüşüm dönüşümü (sayfa mm → görüntü pikseli)
+  function homografi(kaynak, hedef) {
+    const A = [], B = [];
+    for (let i = 0; i < 4; i++) {
+      const [x, y] = kaynak[i], [u, v] = hedef[i];
+      A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); B.push(u);
+      A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); B.push(v);
+    }
+    const n = 8;
+    for (let c = 0; c < n; c++) {
+      let m = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[m][c])) m = r;
+      if (Math.abs(A[m][c]) < 1e-12) return null;
+      [A[c], A[m]] = [A[m], A[c]]; [B[c], B[m]] = [B[m], B[c]];
+      for (let r = 0; r < n; r++) {
+        if (r === c) continue;
+        const k = A[r][c] / A[c][c];
+        if (!k) continue;
+        for (let j = c; j < n; j++) A[r][j] -= k * A[c][j];
+        B[r] -= k * B[c];
+      }
+    }
+    return B.map((b, i) => b / A[i][i]);
+  }
+  const uygula = (H, x, y) => {
+    const z = H[6] * x + H[7] * y + 1;
+    return [(H[0] * x + H[1] * y + H[2]) / z, (H[3] * x + H[4] * y + H[5]) / z];
+  };
+
+  // ---------------------------------------------------------------- işaret bulma
+  /* Uyarlamalı eşik (Bradley) + bağlı bileşenler; dolu, kareye benzer lekeler aday.
+   * Kare ölçütü döndürmeden bağımsız: alan ÷ (merkezden en uzak piksel)² kare için 2, daire için π. */
+  function adaylar(im) {
+    const { w, h, g } = im;
+    const I = new Float64Array((w + 1) * (h + 1));
+    for (let y = 0; y < h; y++) {
+      let t = 0;
+      for (let x = 0; x < w; x++) { t += g[y * w + x]; I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + t; }
+    }
+    const r = Math.max(8, Math.round(Math.min(w, h) / 16));
+    const koyu = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      const y0 = Math.max(0, y - r), y1 = Math.min(h, y + r + 1);
+      for (let x = 0; x < w; x++) {
+        const x0 = Math.max(0, x - r), x1 = Math.min(w, x + r + 1);
+        const t = I[y1 * (w + 1) + x1] - I[y0 * (w + 1) + x1] - I[y1 * (w + 1) + x0] + I[y0 * (w + 1) + x0];
+        if (g[y * w + x] * (x1 - x0) * (y1 - y0) < t * 0.72) koyu[y * w + x] = 1;
+      }
+    }
+    const sonuc = [];
+    const yigin = new Int32Array(w * h), uye = new Int32Array(w * h);
+    const enAz = Math.max(20, (Math.max(w, h) * 0.006) ** 2), enCok = (Math.max(w, h) * 0.06) ** 2;
+    for (let i = 0; i < w * h; i++) {
+      if (koyu[i] !== 1) continue;
+      let ust = 0, n = 0;
+      yigin[ust++] = i; koyu[i] = 2;
+      let sx = 0, sy = 0, sg = 0, x0 = w, x1 = 0, y0 = h, y1 = 0;
+      while (ust) {
+        const p = yigin[--ust];
+        uye[n++] = p;
+        const px = p % w, py = (p - px) / w;
+        sx += px; sy += py; sg += g[p];
+        if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
+        if (px > 0 && koyu[p - 1] === 1) { koyu[p - 1] = 2; yigin[ust++] = p - 1; }
+        if (px < w - 1 && koyu[p + 1] === 1) { koyu[p + 1] = 2; yigin[ust++] = p + 1; }
+        if (py > 0 && koyu[p - w] === 1) { koyu[p - w] = 2; yigin[ust++] = p - w; }
+        if (py < h - 1 && koyu[p + w] === 1) { koyu[p + w] = 2; yigin[ust++] = p + w; }
+      }
+      if (n < enAz || n > enCok) continue;
+      const cx = sx / n, cy = sy / n;
+      let d2 = 0;
+      for (let j = 0; j < n; j++) { const px = uye[j] % w, py = (uye[j] - px) / w; d2 = Math.max(d2, (px - cx) ** 2 + (py - cy) ** 2); }
+      const q = n / d2;
+      if (q < 1.45 || q > 2.6) continue;
+      // karşıtlık: leke, çevresindeki (kendi boyu kadar genişletilmiş kutu) ortalamanın yarısından koyu olmalı
+      const bx = x1 - x0 + 1, by = y1 - y0 + 1;
+      const X0 = Math.max(0, x0 - bx), X1 = Math.min(w, x1 + bx + 1), Y0 = Math.max(0, y0 - by), Y1 = Math.min(h, y1 + by + 1);
+      const toplam = I[Y1 * (w + 1) + X1] - I[Y0 * (w + 1) + X1] - I[Y1 * (w + 1) + X0] + I[Y0 * (w + 1) + X0];
+      const cevre = (toplam - sg) / Math.max(1, (X1 - X0) * (Y1 - Y0) - n);
+      if (sg / n > cevre * 0.55) continue;
+      sonuc.push({ x: cx + 0.5, y: cy + 0.5, alan: n });
+    }
+    return sonuc;
+  }
+
+  const SAYFA_KOSE = [[ISARET.x[0], ISARET.y[0]], [ISARET.x[1], ISARET.y[0]], [ISARET.x[1], ISARET.y[2]], [ISARET.x[0], ISARET.y[2]]];
+  const ORTA = [[ISARET.x[0], ISARET.y[1]], [ISARET.x[1], ISARET.y[1]]];
+
+  /* Altı işareti seçer. Dörtlü (köşeler) seçenekleri denenir: içbükey olmayan, sayfa oranına uyan ve yan ortalarında
+   * işaret bulunan en geniş dörtgen. Dönüş: sayfa yönü belirsiz köşe sıraları (döndürme adayları) ve yan ortaları. */
+  function isaretleriSec(aday) {
+    if (aday.length < 4) return null;
+    aday = aday.slice().sort((a, b) => b.alan - a.alan);
+    const buyuk = aday.slice(0, 6).map(a => a.alan).sort((a, b) => a - b);
+    const ortanca = buyuk[Math.floor(buyuk.length / 2)];
+    aday = aday.filter(a => a.alan >= ortanca * 0.3 && a.alan <= ortanca * 3).slice(0, 14);
+    let en = null;
+    const n = aday.length;
+    const yakin = (x, y, tol, haric) => {
+      let b = null, bd = tol * tol;
+      for (const a of aday) { if (haric.includes(a)) continue; const d = (a.x - x) ** 2 + (a.y - y) ** 2; if (d < bd) { bd = d; b = a; } }
+      return b;
+    };
+    let gx0 = Infinity, gx1 = -Infinity, gy0 = Infinity, gy1 = -Infinity;
+    for (const a of aday) { gx0 = Math.min(gx0, a.x); gx1 = Math.max(gx1, a.x); gy0 = Math.min(gy0, a.y); gy1 = Math.max(gy1, a.y); }
+    const enAzAlan = (gx1 - gx0) * (gy1 - gy0) * 0.05;
+    for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) for (let c = b + 1; c < n; c++) for (let d = c + 1; d < n; d++) {
+      let p = [aday[a], aday[b], aday[c], aday[d]];
+      const mx = (p[0].x + p[1].x + p[2].x + p[3].x) / 4, my = (p[0].y + p[1].y + p[2].y + p[3].y) / 4;
+      p = p.sort((u, v) => Math.atan2(u.y - my, u.x - mx) - Math.atan2(v.y - my, v.x - mx));
+      // içbükey olmamalı
+      let isaret = 0, gecersiz = false, alan = 0;
+      for (let i = 0; i < 4; i++) {
+        const u = p[i], v = p[(i + 1) % 4], z = p[(i + 2) % 4];
+        const cr = (v.x - u.x) * (z.y - v.y) - (v.y - u.y) * (z.x - v.x);
+        if (!isaret) isaret = Math.sign(cr); else if (Math.sign(cr) !== isaret) gecersiz = true;
+        alan += u.x * v.y - v.x * u.y;
+      }
+      if (gecersiz) continue;
+      alan = Math.abs(alan) / 2;
+      if (alan < enAzAlan) continue;
+      const kenar = (i) => Math.hypot(p[(i + 1) % 4].x - p[i].x, p[(i + 1) % 4].y - p[i].y);
+      for (const kayma of [0, 1]) {
+        // kayma 0: p0-p1 kısa kenar (üst ya da alt); kayma 1: p1-p2 kısa kenar
+        const s = [0, 1, 2, 3].map(i => p[(i + kayma) % 4]);
+        const kisa = (kenar(kayma) + kenar((kayma + 2) % 4)) / 2, uzun = (kenar((kayma + 1) % 4) + kenar((kayma + 3) % 4)) / 2;
+        const oran = uzun / kisa;
+        if (oran < 1.05 || oran > 2.3) continue;
+        const H = homografi(SAYFA_KOSE, s.map(q => [q.x, q.y]));
+        if (!H) continue;
+        const tol = kisa / (ISARET.x[1] - ISARET.x[0]) * 7;
+        const orta = ORTA.map(([x, y]) => { const [u, v] = uygula(H, x, y); return yakin(u, v, tol, p); });
+        if (orta[0] && orta[0] === orta[1]) orta[1] = null;
+        const puan = orta.filter(Boolean).length * 1e12 + alan;
+        if (!en || puan > en.puan) en = { puan, kose: s, orta };
+      }
+    }
+    return en;
+  }
+
+  // ---------------------------------------------------------------- okuma
+  /* Bir eşleme (köşe sırası) için sayfa → görüntü dönüşümü: yan ortaları bulunduysa üst ve alt yarı ayrı. */
+  function donusum(kose, orta) {
+    const k = kose.map(q => [q.x, q.y]);
+    const tek = homografi(SAYFA_KOSE, k);
+    if (!orta[0] || !orta[1]) return { tum: tek, ust: tek, alt: tek, parcali: false };
+    const ml = [orta[0].x, orta[0].y], mr = [orta[1].x, orta[1].y];
+    const ust = homografi([SAYFA_KOSE[0], SAYFA_KOSE[1], ORTA[1], ORTA[0]], [k[0], k[1], mr, ml]);
+    const alt = homografi([ORTA[0], ORTA[1], SAYFA_KOSE[2], SAYFA_KOSE[3]], [ml, mr, k[2], k[3]]);
+    return { tum: tek, ust: ust || tek, alt: alt || tek, parcali: true };
+  }
+
+  // sayfa mm → görüntü pikseli; görüntüyü kapsamına almayan ayrı kapanış (sonuçta dönünce fotoğraf bellekte kalmasın)
+  const noktaYap = (T) => (x, y) => uygula(y <= ISARET.y[1] ? T.ust : T.alt, x, y);
+
+  function olcer(im, T) {
+    const nokta = noktaYap(T);
+    const parlak = (x, y) => { const [u, v] = nokta(x, y); return piksel(im, u, v); };
+    // daire içi ortalama parlaklık (r mm), 19 örnek
+    const ic = (x, y, r) => {
+      let t = parlak(x, y), n = 1;
+      for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; t += parlak(x + r * 0.5 * Math.cos(a), y + r * 0.5 * Math.sin(a)); n++; }
+      for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; t += parlak(x + r * Math.cos(a), y + r * Math.sin(a)); n++; }
+      return t / n;
+    };
+    return { nokta, parlak, ic };
+  }
+
+  function otsu(degerler) {
+    const v = degerler.slice().sort((a, b) => a - b);
+    const n = v.length;
+    let en = { esik: 0.4, ayrim: -1, alt: 0, ust: 0 };
+    let sol = 0;
+    const top = v.reduce((t, x) => t + x, 0);
+    for (let i = 1; i < n; i++) {
+      sol += v[i - 1];
+      const m0 = sol / i, m1 = (top - sol) / (n - i);
+      const ayrim = i * (n - i) * (m1 - m0) ** 2;
+      if (ayrim > en.ayrim) en = { esik: (v[i - 1] + v[i]) / 2, ayrim, alt: m0, ust: m1 };
+    }
+    return en;
+  }
+
+  function koduOku(O) {
+    const kara = [];
+    for (let i = 0; i < KOD.sutun * KOD.satir; i++) {
+      const x = KOD.x + (i % KOD.sutun + 0.5) * KOD.adim, y = KOD.y + (Math.floor(i / KOD.sutun) + 0.5) * KOD.adim;
+      kara.push(O.ic(x, y, KOD.dolu * 0.3));
+    }
+    const beyaz = [];
+    for (let c = 0; c < KOD.sutun; c++) {
+      const x = KOD.x + (c + 0.5) * KOD.adim;
+      beyaz.push(Math.max(O.parlak(x, KOD.y - 1.2), O.parlak(x, KOD.y + KOD.satir * KOD.adim + 1.2)));
+    }
+    const koyuluk = kara.map((v, i) => 1 - v / Math.max(1, beyaz[i % KOD.sutun]));
+    const e = otsu(koyuluk);
+    if (e.ust - e.alt < 0.2) return null;
+    return kodCoz(koyuluk.map(v => (v > e.esik ? 1 : 0)));
+  }
+
+  // Kabarcık örnek noktaları (mm, merkeze göre): iç disk, basılı halka (kaba aramada üç yarıçap) ve aradaki beyaz
+  const cember = (r, n) => Array.from({ length: n }, (_, i) => [r * Math.cos(2 * Math.PI * i / n), r * Math.sin(2 * Math.PI * i / n)]);
+  const IC = [[0, 0], ...cember(0.6, 6), ...cember(1.15, 12)];
+  const HALKA = cember(YARICAP, 16);
+  const HALKA3 = [...cember(YARICAP - 0.25, 10), ...cember(YARICAP, 10), ...cember(YARICAP + 0.25, 10)];
+  const HALKA_IC = cember(YARICAP - 0.65, 12), HALKA_DIS = cember(YARICAP + 0.65, 12);
+
+  /* Yerel doğrusal yaklaşım: kabarcık merkezinin görüntü konumu ve mm başına piksel türevleri (örnekleme hızlı olsun diye). */
+  function yerel(O, x, y) {
+    const [u, v] = O.nokta(x, y), [u1, v1] = O.nokta(x + 1, y), [u2, v2] = O.nokta(x, y + 1);
+    return { u, v, a: u1 - u, b: u2 - u, c: v1 - v, d: v2 - v };
+  }
+  const ornek = (im, L, x, y) => piksel(im, L.u + L.a * x + L.b * y, L.v + L.c * x + L.d * y);
+  const ortalama = (im, L, noktalar, dx, dy) => { let t = 0; for (const [x, y] of noktalar) t += ornek(im, L, dx + x, dy + y); return t / noktalar.length; };
+
+  /* Kabarcık öbeğinin basılı halkalara en iyi oturduğu kayma (mm): halka çizgisi, hemen içinden ve dışından koyu.
+   * Kabarcıklar arası boşlukta çizgi olmadığından yanlış oturma ödüllenmez. Önce geniş halkayla kaba arama; geniş halka
+   * yarım aralık kaymış (dolu kabarcıklar arasına) oturmayı doğru konumdan ayıramayabildiği için kaba aramanın en iyi
+   * birkaç adayı ve başlangıç noktası keskin halkayla ince aranır, en iyisi seçilir. */
+  function hizala(im, Ls, merkez = [0, 0], aralik = 2.4) {
+    const deger = (dx, dy, halka) => {
+      let t = 0;
+      for (const L of Ls) t += ortalama(im, L, halka, dx, dy) - (ortalama(im, L, HALKA_IC, dx, dy) + ortalama(im, L, HALKA_DIS, dx, dy)) / 2;
+      return t;
+    };
+    const kaba = [];
+    for (let dy = -aralik; dy <= aralik + 1e-9; dy += 0.4) for (let dx = -aralik; dx <= aralik + 1e-9; dx += 0.4)
+      kaba.push({ dx: merkez[0] + dx, dy: merkez[1] + dy, t: deger(merkez[0] + dx, merkez[1] + dy, HALKA3) });
+    kaba.sort((a, b) => a.t - b.t);
+    const adaylar = [kaba[0]];
+    // dar aramada (çapalar, ±1,2 mm'ye kadar) yarım aralık kayması erişilemez; tek aday yeter
+    const enCok = aralik > 2 ? 4 : 1;
+    if (enCok > 1 && Math.hypot(kaba[0].dx - merkez[0], kaba[0].dy - merkez[1]) > 0.3) adaylar.push({ dx: merkez[0], dy: merkez[1] });
+    for (const k of kaba) {
+      if (adaylar.length >= enCok) break;
+      if (adaylar.every(a => Math.hypot(a.dx - k.dx, a.dy - k.dy) >= 1)) adaylar.push(k);
+    }
+    let en = null;
+    for (const a of adaylar) for (let dy = -0.3; dy <= 0.3 + 1e-9; dy += 0.1) for (let dx = -0.3; dx <= 0.3 + 1e-9; dx += 0.1) {
+      const t = deger(a.dx + dx, a.dy + dy, HALKA);
+      if (!en || t < en.t) en = { dx: a.dx + dx, dy: a.dy + dy, t };
+    }
+    return en;
+  }
+
+  /* Sütun içinde değişen kayma (kâğıt bükülmesi): önce sütun geneli, sonra her 4 satırda bir çapa (±3 satırlık pencere),
+   * aradaki satırlar çapalar arasında doğrusal. satirlar: [{ L:[yerel..] , y }] (y sırasında). */
+  function sutunHizala(im, satirlar) {
+    const genel = hizala(im, satirlar.filter((_, i) => i % 3 === 1).flatMap(s => s.L.filter((_, j) => j % 2 === 0)));
+    const capa = [];
+    for (let i = 0; i < satirlar.length; i += 4) capa.push(i);
+    if (capa[capa.length - 1] !== satirlar.length - 1) capa.push(satirlar.length - 1);
+    const k = new Map(capa.map(i => {
+      const pencere = satirlar.slice(Math.max(0, i - 2), i + 3).flatMap(s => s.L);
+      return [i, hizala(im, pencere, [genel.dx, genel.dy], 0.8)];
+    }));
+    return satirlar.map((_, i) => {
+      const j = capa.findIndex(c => c >= i);
+      if (capa[j] === i) return k.get(i);
+      const a = capa[j - 1], b = capa[j], t = (i - a) / (b - a);
+      return { dx: k.get(a).dx * (1 - t) + k.get(b).dx * t, dy: k.get(a).dy * (1 - t) + k.get(b).dy * t };
+    });
+  }
+
+  /* Gri görüntüden (Uint8Array, w, h) formu okur.
+   * Dönüş: { tanim, no, kitapcik, cevaplar:[dizi], supheli:[{alan, ders?, soru?, hane?}], esik, isaret } ya da { hata }. */
+  function formOku(im, secenekler = {}) {
+    const kucuk = kucult(im, 1000);
+    const aday = adaylar(kucuk).map(a => ({ x: a.x * kucuk.k, y: a.y * kucuk.k, alan: a.alan }));
+    const sec = isaretleriSec(aday);
+    if (!sec) return { hata: 'Köşe kareleri bulunamadı. Formun tamamı, dört köşesi görünecek biçimde çekilmeli.' };
+    // dört döndürme adayından kod şeridi doğrulananı (CRC) seç
+    let T = null, tanim = null, O = null;
+    for (let r = 0; r < 4 && !tanim; r++) {
+      const kose = [0, 1, 2, 3].map(i => sec.kose[(i + r) % 4]);
+      const orta = r % 2 === 0 ? (r === 0 ? sec.orta : [sec.orta[1], sec.orta[0]]) : [null, null];
+      T = donusum(kose, orta);
+      if (!T.tum) continue;
+      O = olcer(im, T);
+      tanim = koduOku(O);
+    }
+    if (!tanim) return { hata: 'Form okunamadı. Sayfanın altı köşe karesi de görünecek biçimde, net ve yakından yeniden çekin.' };
+    if (secenekler.beklenen && secenekler.beklenen.kod !== tanim.kod) return { hata: 'Bu form başka bir sınavın formu.', tanim };
+    const d = formDuzeni(tanim);
+    if (d.hata) return { hata: d.hata, tanim };
+
+    /* Bir kabarcık satırının (aynı sütunda yan yana kabarcıklar) koyulukları; yerel beyaz kabarcıklar arası boşluktan.
+     * hiza: basılı halka çizgisinin iç ve dış yanına göre koyuluğu, satırın ortancası (halkaya oturmamışsa küçülür). */
+    const olc = (Ls, kayma, beyazNokta) => {
+      const beyaz = Math.max(1, ...Ls.flatMap(L => beyazNokta.map(([x, y]) => ornek(im, L, kayma.dx + x, kayma.dy + y))));
+      const v = Ls.map(L => Math.max(0, 1 - ortalama(im, L, IC, kayma.dx, kayma.dy) / beyaz));
+      const h = Ls.map(L => ((ortalama(im, L, HALKA_IC, kayma.dx, kayma.dy) + ortalama(im, L, HALKA_DIS, kayma.dx, kayma.dy)) / 2
+        - ortalama(im, L, HALKA, kayma.dx, kayma.dy)) / beyaz).sort((a, b) => a - b);
+      return { v, hiza: h[Math.floor(h.length / 2)] };
+    };
+    const ax = ARALIK / 2, ay = SATIR / 2;
+    const ARA_BEYAZ = [[-ax, -ay], [ax, -ay], [-ax, ay], [ax, ay]];
+    // cevap alanı: sütun sütun
+    const sutunlar = new Map();
+    for (const k of d.kabarcik) {
+      const a = Math.round(k.x);
+      if (!sutunlar.has(a)) sutunlar.set(a, []);
+      sutunlar.get(a).push({ k, L: k.cx.map(x => yerel(O, x, k.y)) });
+    }
+    const sorular = [];
+    for (const liste of sutunlar.values()) {
+      liste.sort((a, b) => a.k.y - b.k.y);
+      const kayma = sutunHizala(im, liste);
+      liste.forEach((s, i) => sorular.push({ ...s.k, ...olc(s.L, kayma[i], ARA_BEYAZ), satir: liste, i, kayma: kayma[i] }));
+    }
+    /* Hiza denetimi: halkalara oturmamış satır (çapalar arası bükülme) komşularıyla yeniden hizalanır;
+     * yine oturmazsa işaretlenir. Sınır, kâğıdın ortanca hiza kalitesine göre. */
+    const hz = sorular.map(s => s.hiza).sort((a, b) => a - b);
+    const hizaSinir = 0.4 * hz[Math.floor(hz.length / 2)];
+    for (const s of sorular) {
+      if (s.hiza >= hizaSinir) continue;
+      const pencere = s.satir.slice(Math.max(0, s.i - 1), s.i + 2).flatMap(x => x.L);
+      const yeni = hizala(im, pencere, [s.kayma.dx, s.kayma.dy], 1.2);
+      const o = olc(s.satir[s.i].L, yeni, ARA_BEYAZ);
+      if (o.hiza > s.hiza) Object.assign(s, o);
+      s.hizaBozuk = s.hiza < hizaSinir;
+    }
+    // okul no ve kitapçık: hane sütunları birlikte hizalanır
+    const noSatir = [...Array(10)].map((_, r) => ({ L: [...Array(NO.hane)].map((_, hane) => yerel(O, NO.x + hane * NO.dx, NO.y + r * NO.dy)) }));
+    const noKayma = sutunHizala(im, noSatir);
+    const NO_BEYAZ = [[-NO.dx / 2, NO.dy / 2], [NO.dx / 2, NO.dy / 2]];
+    const noOlcum = noSatir.map((s, r) => olc(s.L, noKayma[r], NO_BEYAZ));
+    const noV = [...Array(NO.hane)].map((_, hane) => noOlcum.map(o => o.v[hane]));
+    const kitL = [...KITAPCIK.harf].map((_, i) => yerel(O, KITAPCIK.x, KITAPCIK.y + i * KITAPCIK.dy));
+    const kitKayma = hizala(im, kitL, [noKayma[0].dx, noKayma[0].dy], 0.8);
+    const kitOlcum = olc(kitL, kitKayma, [[-3, KITAPCIK.dy / 2], [3, KITAPCIK.dy / 2]]);
+    const kitV = kitOlcum.v;
+
+    // eşik: bütün kabarcıkların koyuluk dağılımında Otsu; boş kâğıtta sabit
+    const hepsi = sorular.flatMap(s => s.v).concat(noV.flat(), kitV);
+    const e = otsu(hepsi);
+    const esik = e.ust - e.alt < 0.18 ? 0.4 : Math.min(0.55, Math.max(0.25, e.esik));
+    const pay = 0.08;
+    const supheli = [];
+    const sec1 = (v) => {
+      const dolu = v.map((x, i) => [x, i]).filter(([x]) => x >= esik).sort((a, b) => b[0] - a[0]);
+      const sinirda = v.some(x => Math.abs(x - esik) < pay);
+      if (!dolu.length) {
+        // eşiğin altında ama satırın kalanından belirgin koyu şık: kâğıdın geri kalanı çok koyu işaretlenmişken
+        // hafif basılmış işaret (ya da silinmiş iz) olabilir; boş sayılır ama işaretlenir
+        const s = v.slice().sort((a, b) => a - b);
+        const silik = s[s.length - 1] >= 0.15 && s[s.length - 1] - s[Math.floor(s.length / 2)] >= 0.12;
+        return { i: -1, emin: !sinirda && !silik };
+      }
+      if (dolu.length === 1) return { i: dolu[0][1], emin: !sinirda };
+      // biri belirgin koyuysa ötekisi silinmiş iz sayılır ama işaretlenir
+      if (dolu[0][0] >= dolu[1][0] * 1.6) return { i: dolu[0][1], emin: false };
+      // çift işaret yanlış sayılır. İki işaret benzer koyuluktaysa gerçek çift işarettir; biri belirgin açıksa
+      // koyu silgi izi olabilir, kontrole düşer
+      return { i: -2, emin: !sinirda && dolu[1][0] >= esik + pay && dolu[0][0] < dolu[1][0] * 1.25 };
+    };
+    const cevaplar = d.tanim.sorular.map(n => Array(n).fill('-'));
+    for (const s of sorular) {
+      const r = sec1(s.v);
+      cevaplar[s.ders][s.soru] = r.i === -1 ? '-' : r.i === -2 ? '*' : HARF[r.i];
+      if (!r.emin || s.hizaBozuk) supheli.push({ alan: 'soru', ders: s.ders, soru: s.soru, v: s.v.map(x => Math.round(x * 100) / 100), ...(s.hizaBozuk && { hiza: true }) });
+    }
+    // numara sola ya da sağa yaslı yazılabilir; rakamlar arasında boş hane şüphelidir
+    let no = '', araBos = false, noSupheli = false;
+    for (const v of noV) {
+      const r = sec1(v);
+      if (r.i >= 0) { if (araBos) noSupheli = true; no += r.i; } else { if (r.i === -2) noSupheli = true; if (no) araBos = true; }
+      if (!r.emin) noSupheli = true;
+    }
+    if (noSupheli || !no) supheli.push({ alan: 'no' });
+    const k = sec1(kitV);
+    const kitapcik = k.i >= 0 ? KITAPCIK.harf[k.i] : 'A';
+    if (!k.emin || k.i === -2) supheli.push({ alan: 'kitapcik' });
+    return {
+      tanim: d.tanim, no: no === ANAHTAR_NO ? no : no.replace(/^0+(?=\d)/, ''), kitapcik, kitapcikBos: k.i === -1, cevaplar: cevaplar.map(c => c.join('')),
+      supheli, esik: Math.round(esik * 100) / 100, parcali: T.parcali,
+      isaret: sec.kose.map(q => [q.x, q.y]),
+      // ekranda gösterim için: sayfa mm → görüntü pikseli
+      nokta: noktaYap(T),
+    };
+  }
+
+  // ---------------------------------------------------------------- optik sınav verisi
+  /* Optik sınav (durum.optik[]): { id, ad, tarih, seviye, yayin, ceza, secenek, kitapcikB, degisti,
+   *   dersler:[{ id, ad, soru, anahtar:{ A:[öğe], B?:[öğe] } }], kagitlar:[{ no, kitapcik, kitapcikBos, cevaplar:[dizi], zaman }] }
+   * Anahtar öğesi: 'A'..'E', birden çok doğru 'AB', iptal 'X', bilinmiyor ''. Anahtar tamamlanınca motorun sınav
+   * biçimine çevrilip (optikYayini) sınavlara katılır; anahtarsız sınav sonuç ekranlarına girmez. */
+  const SABLONLAR = {
+    tyt: [['Türkçe', 40], ['Sosyal Bilimler', 20], ['Temel Matematik', 40], ['Fen Bilimleri', 20]],
+    ayt: [['Türk Dili ve Edebiyatı', 24], ['Tarih-1', 10], ['Coğrafya-1', 6], ['Tarih-2', 11], ['Coğrafya-2', 11], ['Felsefe Grubu', 12],
+      ['Din Kültürü', 6], ['Matematik', 40], ['Fizik', 14], ['Kimya', 13], ['Biyoloji', 13]],
+    ara: [['Türkçe', 30], ['Sosyal Bilimler', 30], ['Matematik', 30], ['Fen Bilimleri', 30]],
+  };
+  const ANAHTAR_NO = '00000'; // beş hanesi de 0 kodlanmış kâğıt cevap anahtarıdır (öğrenci numarasında baştaki sıfırlar atılır)
+
+  function dersKimligi(ad, kullanilan) {
+    const taban = String(ad).toLocaleLowerCase('tr').replace(/ı/g, 'i').normalize('NFD').replace(/\p{M}/gu, '').replace(/[^a-z0-9]/g, '') || 'ders';
+    let id = taban, i = 2;
+    while (kullanilan.has(id)) id = taban + i++;
+    kullanilan.add(id);
+    return id;
+  }
+
+  /* Girdi denetlenir; sorun varsa { hata }, yoksa { sinav } */
+  function optikSinav(g, simdi = Date.now()) {
+    const ad = String(g.ad || '').trim();
+    if (!ad) return { hata: 'Sınav adını yazın.' };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(g.tarih || '')) return { hata: 'Sınav tarihini girin.' };
+    const dersler = (g.dersler || []).map(d => ({ ad: String(d.ad || '').trim(), soru: Number(d.soru) })).filter(d => d.ad || d.soru);
+    if (!dersler.length) return { hata: 'En az bir ders girin.' };
+    if (dersler.some(d => !d.ad)) return { hata: 'Her dersin adı olmalı.' };
+    if (dersler.some(d => !Number.isInteger(d.soru) || d.soru < 1 || d.soru > EN_COK_SORU)) return { hata: `Soru sayısı 1 ile ${EN_COK_SORU} arasında tam sayı olmalı.` };
+    const secenek = Number(g.secenek) === 4 ? 4 : 5;
+    const duzen = formDuzeni({ secenek, sorular: dersler.map(d => d.soru) });
+    if (duzen.hata) return { hata: duzen.hata };
+    const kullanilan = new Set();
+    return {
+      sinav: {
+        id: 'op-' + simdi.toString(36), ad, tarih: g.tarih, seviye: Number(g.seviye) || null,
+        yayin: ad.includes(' - ') ? ad.split(' - ')[0].trim() : null, ceza: Number(g.ceza) || 0, secenek, kitapcikB: !!g.kitapcikB,
+        degisti: simdi, kagitlar: [],
+        dersler: dersler.map(d => ({ id: dersKimligi(d.ad, kullanilan), ad: d.ad, soru: d.soru, anahtar: { A: Array(d.soru).fill('') } })),
+      },
+    };
+  }
+
+  /* Yazılmış anahtar: "ABCDE…", "1-A 2-B …", boşluk ve numaralar atlanır; X iptal, [AB] iki doğru, ? bilinmiyor. */
+  function anahtarCoz(metin, soru, secenek = 5) {
+    const harf = HARF.slice(0, secenek);
+    const dizi = [];
+    const s = String(metin || '').toLocaleUpperCase('tr');
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (c === '[' || c === '(') {
+        const son = s.indexOf(c === '[' ? ']' : ')', i);
+        if (son < 0) return { dizi, hata: `${dizi.length + 1}. soru: “${c}” kapanmamış.`, gecersiz: true };
+        const ic = s.slice(i + 1, son).replace(/[^A-ZÇĞİÖŞÜ]/g, '');
+        if (ic && [...ic].every(x => harf.includes(x))) { dizi.push([...new Set(ic)].sort().join('')); i = son; continue; }
+        if (ic) return { dizi, hata: `${dizi.length + 1}. soru: “${s.slice(i, son + 1)}” anlaşılmadı.`, gecersiz: true };
+        continue; // "1)" gibi numara ayracı
+      }
+      if (harf.includes(c) || c === 'X') dizi.push(c);
+      else if (c === '?') dizi.push('');
+      else if (/[A-ZÇĞİÖŞÜ]/.test(c)) return { dizi, hata: `${dizi.length + 1}. soru: “${c}” bu sınavda şık değil.`, gecersiz: true };
+    }
+    if (dizi.length !== soru) return { dizi, hata: `${dizi.length} / ${soru} soru girildi.`, fazla: dizi.length > soru };
+    return { dizi };
+  }
+  /* Kontrol ekranında gösterilecek sayfa bölgesi (mm): belirsiz soru satırı (komşu satırların yarısıyla), okul no ya da kitapçık */
+  function kontrolAlani(duzen, s) {
+    if (s.alan === 'no') return { x0: NO.x - 4, y0: 37, x1: NO.x + (NO.hane - 1) * NO.dx + 4, y1: NO.y + 9 * NO.dy + 3 };
+    if (s.alan === 'kitapcik') return { x0: KITAPCIK.x - 8, y0: 37, x1: KITAPCIK.x + 8, y1: KITAPCIK.y + KITAPCIK.dy + 4 };
+    const k = duzen.kabarcik.find(x => x.ders === s.ders && x.soru === s.soru);
+    return { x0: k.x - 0.5, y0: k.y - 4.5, x1: k.x + duzen.sutunGen + 0.5, y1: k.y + 4.5 };
+  }
+  const anahtarYazi = (dizi) => (dizi || []).map(x => !x ? '?' : x.length > 1 ? `[${x}]` : x).join('');
+
+  const kitapciklar = (op) => op.kitapcikB ? ['A', 'B'] : ['A'];
+  /* Eksik anahtarlar: [{ ders, kitapcik, eksik }] */
+  function anahtarEksik(op) {
+    const e = [];
+    for (const d of op.dersler) for (const k of kitapciklar(op)) {
+      const a = (d.anahtar && d.anahtar[k]) || [];
+      const n = d.soru - a.filter(Boolean).length;
+      if (n > 0) e.push({ ders: d.ad, kitapcik: k, eksik: n });
+    }
+    return e;
+  }
+
+  /* Motorun sınav biçimi. sinifBul(no) öğrencinin sınıfını verir. */
+  function optikYayini(op, sinifBul = () => '') {
+    return {
+      id: op.id, ad: op.ad, tarih: op.tarih, seviye: op.seviye, yayin: op.yayin, ceza: op.ceza, optik: true,
+      notlar: ['Telefonla optik okundu.'],
+      dersler: op.dersler.map(d => {
+        const anahtar = {};
+        for (const k of kitapciklar(op)) anahtar[k] = d.anahtar[k].slice();
+        return { id: d.id, ad: d.ad, soru: d.soru, anahtar, kazanim: Array.from({ length: d.soru }, () => []) };
+      }),
+      kagitlar: op.kagitlar.map(k => ({
+        no: k.no, sinif: sinifBul(k.no) || '', kitapcik: op.kitapcikB ? k.kitapcik : 'A',
+        cevap: Object.fromEntries(op.dersler.map((d, i) => [d.id, k.cevaplar[i]])),
+      })),
+    };
+  }
+
+  /* Telefondan gelen okuma dosyasını optik sınavlara katar (yerinde değiştirir).
+   * veri = { bicim:'deneme-takip/optik', formlar:[{ kod, secenek, sorular, kagitlar:[{ no, kitapcik, kitapcikBos, cevaplar, kontrol }] }] }
+   * Aynı numaralı kâğıt varsa daha yeni okunan (zaman) kalır. Anahtar kâğıdı (okul no 00000) yalnız yazılmamış anahtar
+   * öğelerini doldurur; yazılı anahtarla çelişirse yazılı olan korunur ve uyarılır.
+   * Dönüş: { degisen:[op], rapor:{ yeni, guncel, guncelNo:[no], eski, anahtar, bilinmeyenForm:[kod], uyusmayan:[ad], kontrolsuz, uyari:[metin] } } */
+  function okumaAl(oplar, veri, simdi = Date.now()) {
+    const rapor = { yeni: 0, guncel: 0, guncelNo: [], eski: 0, anahtar: 0, bilinmeyenForm: [], uyusmayan: [], kontrolsuz: 0, uyari: [] };
+    const degisen = new Set();
+    if (veri && veri.surum > 1) { rapor.uyari.push('Okuma dosyası uygulamanın bu sürümünden yeni; önce uygulamayı güncelleyin.'); return { degisen: [], rapor }; }
+    for (const f of (veri && Array.isArray(veri.formlar) && veri.formlar) || []) {
+      if (!f || typeof f !== 'object') continue;
+      const op = oplar.find(o => formKodu(o.id) === f.kod);
+      if (!op) { rapor.bilinmeyenForm.push(String(f.kod)); continue; }
+      const sorular = op.dersler.map(d => d.soru);
+      if ((op.secenek || 5) !== f.secenek || sorular.join() !== (f.sorular || []).join()) { rapor.uyusmayan.push(op.ad); continue; }
+      const gecersiz = (op.secenek || 5) === 4 ? /[^A-D*-]/ : /[^A-E*-]/;
+      for (const k of Array.isArray(f.kagitlar) ? f.kagitlar : []) {
+        if (!k || !Array.isArray(k.cevaplar) || k.cevaplar.length !== sorular.length || k.cevaplar.some((c, i) => typeof c !== 'string' || c.length !== sorular[i] || gecersiz.test(c))) {
+          rapor.uyari.push(`${op.ad}: bozuk bir kâğıt alınmadı.`); continue;
+        }
+        const no = String(k.no || '');
+        if (!/^\d+$/.test(no)) { rapor.uyari.push(`${op.ad}: okul numarası olmayan bir kâğıt alınmadı.`); continue; }
+        if (k.kontrol) rapor.kontrolsuz++;
+        if (no === ANAHTAR_NO) {
+          if (op.kitapcikB && k.kitapcikBos) { rapor.uyari.push(`${op.ad}: anahtar kâğıdında kitapçık işaretlenmemiş; alınmadı (A ya da B işaretleyip yeniden okutun).`); continue; }
+          const kit = op.kitapcikB && k.kitapcik === 'B' ? 'B' : 'A';
+          let doldu = 0;
+          op.dersler.forEach((d, i) => {
+            const yeni = [...k.cevaplar[i]].map(c => c === '-' || c === '*' ? '' : c);
+            const eski = d.anahtar[kit] || [];
+            const celisen = [];
+            yeni.forEach((x, j) => { if (eski[j] && x && x !== eski[j]) celisen.push(j + 1); });
+            if (celisen.length) rapor.uyari.push(`${op.ad} / ${d.ad}${op.kitapcikB ? ' ' + kit : ''}: anahtar kâğıdı yazılı anahtardan farklı (soru ${celisen.slice(0, 8).join(', ')}${celisen.length > 8 ? '…' : ''}); yazılı anahtar korundu. Kâğıttakini almak için o dersin anahtarını silip dosyayı yeniden alın.`);
+            d.anahtar[kit] = Array.from({ length: d.soru }, (_, j) => { if (!eski[j] && yeni[j]) doldu++; return eski[j] || yeni[j] || ''; });
+          });
+          rapor.anahtar++;
+          if (doldu) degisen.add(op);
+          continue;
+        }
+        const kagit = { no, kitapcik: k.kitapcik === 'B' ? 'B' : 'A', kitapcikBos: !!k.kitapcikBos, cevaplar: k.cevaplar.slice(), zaman: Number(k.zaman) || simdi };
+        const i = op.kagitlar.findIndex(x => x.no === no);
+        if (i >= 0 && (op.kagitlar[i].zaman || 0) > kagit.zaman) { rapor.eski++; continue; }
+        if (i >= 0) {
+          const o = op.kagitlar[i];
+          const ayni = o.kitapcik === kagit.kitapcik && o.kitapcikBos === kagit.kitapcikBos && o.cevaplar.join() === kagit.cevaplar.join();
+          if (ayni) continue; // aynı dosya ikinci kez (zamanı da değişmez)
+          op.kagitlar[i] = kagit;
+          rapor.guncel++; rapor.guncelNo.push(no);
+        } else { op.kagitlar.push(kagit); rapor.yeni++; }
+        if (!op.kitapcikB && k.kitapcik === 'B' && !k.kitapcikBos) rapor.uyari.push(`${op.ad}: ${no} numaralı kâğıtta B kitapçığı işaretli, sınav tek kitapçıklı; A anahtarıyla puanlandı.`);
+        if (op.kitapcikB && k.kitapcikBos) rapor.uyari.push(`${op.ad}: ${no} numaralı kâğıtta kitapçık işaretlenmemiş; A sayıldı.`);
+        degisen.add(op);
+      }
+    }
+    for (const op of degisen) op.degisti = simdi;
+    return { degisen: [...degisen], rapor };
+  }
+
+  const Optik = {
+    SAYFA, formKodu, formTanimi, formDuzeni, formSvg, kodla, kodCoz, griyeCevir, formOku, homografi,
+    HARF, SABLONLAR, ANAHTAR_NO, kontrolAlani, optikSinav, anahtarCoz, anahtarYazi, anahtarEksik, optikYayini, okumaAl,
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = Optik;
+  else kok.Optik = Optik;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
 <script>/* Deneme Takip · arayüz. Veri yalnız bu tarayıcıda (IndexedDB) ve koçun yedek dosyasında durur. */
 (function () {
   'use strict';
   const M = window.Motor;
-  const SURUM = 'v1.1 · 7 Ekim 2026';
+  const SURUM = 'v1.3 · 7 Ekim 2026';
   const ESIK = { zayif: 0.5, iyi: 0.67 }; // AKAS paneliyle aynı: < %50 zayıf, ≥ %67 iyi
-  const VARSAYILAN_AYAR = { karneSira: true, karneKazanim: true, karneSoruDokumu: true, tahtaKisi: 7, tahtaDersler: false };
+  const VARSAYILAN_AYAR = { karneSira: true, karnePuan: true, karneKazanim: true, karneSoruDokumu: true, tahtaKisi: 7, tahtaDersler: false };
 
   let durum = M.bosDurum();
   const onbellek = new Map();
@@ -542,6 +1651,28 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     return onbellek.get(sinav.id);
   }
   function tumHesaplar() { return durum.sinavlar.map(hesap); }
+  // YKS puan tahmini; AYT denemesinde TYT eşinin hesabı da gerekir (önbellek kaydet() ile temizlenir)
+  function puanlar(x) {
+    const k = 'puan:' + x.sinav.id;
+    if (!onbellek.has(k)) {
+      const esi = M.puanTuru(x.sinav) === 'ayt' ? M.tytEsiBul(x.sinav, durum.sinavlar) : null;
+      onbellek.set(k, { ...M.puanHesapla(x, esi ? hesap(esi) : null), esi });
+    }
+    return onbellek.get(k);
+  }
+  const TUR_AD = { tyt: 'TYT denemesi', ayt: 'AYT denemesi', ara: 'Ara sınıf denemesi (TYT’ye yaklaşık)', yok: 'Puan hesaplanmasın' };
+  const puanBaslik = (P, t) => P.tur === 'ara' ? 'TYT ≈' : M.OSYM.tur[t].ad;
+  const testAd = (k) => M.OSYM.test[k].ad;
+  // puan hücresinin açıklaması: hesapta kullanılan (ölçekli) netler ya da neden hesaplanmadığı
+  function puanIpucu(P, v, t) {
+    if (!v || !v.net) return 'Bu sınavda puanlanan derse girmemiş.';
+    if (v[t] == null) {
+      if (P.tur === 'ayt' && v.tytYok) return 'TYT eşine girmediği (ya da TYT puanı hesaplanmadığı) için hesaplanmadı.';
+      return 'ÖSYM kuralı: puan için ilgili testlerden en az 0,5 net gerekir.';
+    }
+    return 'Puanda kullanılan netler: ' + Object.entries(v.net).map(([k, n]) => `${testAd(k)} ${sayi(n)}`).join(' · ');
+  }
+  const puanYazi = (P, v) => P.turler.filter(t => v && v[t] != null).map(t => `${puanBaslik(P, t)} ${sayi(v[t], 1)}`).join(' · ');
   let analizOnbellek = new WeakMap();
   function kazanimAnalizi(x, dersId) {
     let m = analizOnbellek.get(x); if (!m) { m = new Map(); analizOnbellek.set(x, m); }
@@ -610,6 +1741,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
   };
 
   // Başarılıysa true; yazılamazsa uyarır ve false döner (veri bu sekmede açık kalır)
+  let kayitBekliyor = false; // son kaydetme başarısızdı: bellekteki veri tarayıcıda yok
   async function kaydet() {
     durum.degisti = Date.now();
     onbellek.clear(); analizOnbellek = new WeakMap();
@@ -621,6 +1753,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
       console.error(e); tamam = false;
       bildir('Tarayıcıya kaydedilemedi: ' + (e && e.message) + '. Sekmeyi kapatmadan Yedekle’ye basın.');
     }
+    kayitBekliyor = !tamam;
     seritGuncelle();
     return tamam;
   }
@@ -640,7 +1773,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
 
   function seritGuncelle() {
     const s = $('#serit');
-    const yedeksiz = durum.sinavlar.length && (!durum.sonYedek || (durum.degisti || 0) > durum.sonYedek);
+    const yedeksiz = (durum.sinavlar.length || (durum.optik || []).length) && (!durum.sonYedek || (durum.degisti || 0) > durum.sonYedek);
     s.classList.toggle('gizli', !yedeksiz);
     if (yedeksiz) {
       s.innerHTML = `<span>${durum.sonYedek ? 'Son yedekten sonra değişiklik var.' : 'Henüz yedek alınmadı.'} Tarayıcı verisi silinirse yedek dosyasından dönülür.</span><button class="ana" data-is="yedekle">Yedekle</button>`;
@@ -706,14 +1839,16 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
   async function dosyaIsleIc(dosya) {
     let veri;
     try { veri = JSON.parse(await dosya.text()); } catch (e) { return bildir('Dosya okunamadı: geçerli bir JSON değil.'); }
+    if (veri && veri.bicim === 'deneme-takip/optik') return iceAktarmaSonucu((await optikOkumaAl(veri)).html);
     const sorun = M.dogrula(veri);
     if (sorun.length) return iceAktarmaSonucu(`<div class="bilgi hata"><b>Dosya alınmadı.</b><br>${sorun.slice(0, 8).map(h).join('<br>')}</div>`);
     if (veri.bicim === 'deneme-takip/durum') {
       let yerine = true;
-      if (durum.sinavlar.length || durum.elleTaslak || durum.ogrenciler.some(o => o.ad)) {
+      if (durum.sinavlar.length || (durum.optik || []).length || durum.elleTaslak || durum.ogrenciler.some(o => o.ad)) {
         const eski = veri.degisti && durum.degisti && veri.degisti < durum.degisti;
         const tarihi = veri.yedekTarihi ? new Date(veri.yedekTarihi).toLocaleString('tr-TR') : 'bilinmiyor';
-        const metin = `Yedek: ${veri.sinavlar.length} sınav, ${veri.ogrenciler.length} öğrenci (alındığı an: ${h(tarihi)}). Tarayıcıda şu an ${durum.sinavlar.length} sınav var.`
+        const optikSay = (d) => (Array.isArray(d.optik) && d.optik.length ? `, ${d.optik.length} optik sınav` : '');
+        const metin = `Yedek: ${veri.sinavlar.length} sınav${optikSay(veri)}, ${veri.ogrenciler.length} öğrenci (alındığı an: ${h(tarihi)}). Tarayıcıda şu an ${durum.sinavlar.length} sınav${optikSay(durum)} var.`
           + (eski ? '<br><b>Dikkat: bu yedek, tarayıcıdaki veriden eski.</b>' : '')
           + (durum.elleTaslak ? '<br>Yarım kalmış elle giriş “yerine koy” seçilirse silinir.' : '');
         const c = await sec('Yedek dosyası', metin, [
@@ -727,6 +1862,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
       if (yerine) {
         const tut = { sonYedek: durum.sonYedek, yedekAdi: durum.yedekAdi };
         durum = { ...M.bosDurum(), ...veri, ...tut };
+        optikHepsiniYayinla();
         if (!(await kaydet())) return iceAktarmaSonucu(KAYIT_HATASI);
         return iceAktarmaSonucu(`<div class="bilgi"><b>Yedek geri yüklendi.</b> ${veri.sinavlar.length} sınav, ${veri.ogrenciler.length} öğrenci.</div>`);
       }
@@ -737,6 +1873,8 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     const { durum: yeni, rapor } = M.birlestir(durum, veri);
     if (veri.ayarlar && !durum.ayarlar) yeni.ayarlar = veri.ayarlar;
     durum = yeni;
+    // optik sınavların yayını birleşmiş optik kaydından ve güncel öğrenci sınıflarından yeniden kurulur
+    optikHepsiniYayinla();
     if (!(await kaydet())) return iceAktarmaSonucu(KAYIT_HATASI);
     const tutan = denetim.reduce((t, d) => t + d.tutan, 0);
     let html = `<div class="bilgi"><b>Alındı.</b> Yeni sınav ${rapor.yeniSinav}, güncellenen ${rapor.guncelSinav}, yeni öğrenci ${rapor.yeniOgrenci}.`;
@@ -849,13 +1987,13 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
 
   function sinavBasligi(s, x) {
     return `<div class="satir ayrik"><div><div class="alt"><a href="#/sinavlar">Sınavlar</a> ›</div><h1>${h(s.ad)}</h1>
-      <div class="alt">${tarihYaz(s.tarih)}${s.yayin ? ' · ' + h(s.yayin) : ''} · ${x.satirlar.length} öğrenci · ${s.dersler.map(d => `${h(d.ad)} ${d.soru}`).join(', ')} soru · ${s.ceza ? s.ceza + ' yanlış 1 doğruyu götürür' : 'yanlış doğruyu götürmez'}</div></div>
+      <div class="alt">${tarihYaz(s.tarih)}${s.yayin ? ' · ' + h(s.yayin) : ''}${s.optik && optikBul(s.id) ? ` · <a href="#/optik/${encodeURIComponent(s.id)}">optik okuma</a>` : ''} · ${x.satirlar.length} öğrenci · ${s.dersler.map(d => `${h(d.ad)} ${d.soru}`).join(', ')} soru · ${s.ceza ? s.ceza + ' yanlış 1 doğruyu götürür' : 'yanlış doğruyu götürmez'}</div></div>
       <div class="satir yazdirma-yok"><a href="#/tahta/${encodeURIComponent(s.id)}"><button>Sınıf ekranı</button></a><a href="#/karne/${encodeURIComponent(s.id)}/hepsi"><button class="ana">Karneler</button></a></div></div>
       ${(s.notlar || []).map(n => `<div class="bilgi uyari">${h(n)}</div>`).join('')}`;
   }
 
   function sekmeler(s, secili) {
-    const l = [['siralama', 'Sıralama'], ['dersler', 'Ders ortalamaları'], ['sorular', 'Soru analizi'], ['kazanimlar', 'Kazanım analizi']];
+    const l = [['siralama', 'Sıralama'], ['dersler', 'Ders ortalamaları'], ['sorular', 'Soru analizi'], ['kazanimlar', 'Kazanım analizi'], ['kopya', 'Kopya analizi']];
     return `<div class="sekmeler">${l.map(([k, a]) => `<a href="#/sinav/${encodeURIComponent(s.id)}/${k}" class="${k === secili ? 'secili' : ''}">${a}</a>`).join('')}</div>`;
   }
 
@@ -875,6 +2013,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     else if (sekme === 'dersler') html += sekmeDersler(s, x);
     else if (sekme === 'sorular') html += sekmeSorular(s, x, sorgu);
     else if (sekme === 'kazanimlar') html += sekmeKazanimlar(s, x, sorgu);
+    else if (sekme === 'kopya') html += sekmeKopya(s, x, sorgu);
     return html;
   }
 
@@ -886,7 +2025,9 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     let html = `<div class="satir ayrik yazdirma-yok" style="margin:8px 0">${sinifSecici(x, sinif)}<label class="alt"><input type="checkbox" data-is="ayrinti" ${ayrinti ? 'checked' : ''}> Doğru / yanlış / boş göster</label></div>`;
     html += `<div class="tablo-kap"><table><thead><tr><th class="sirala">Sıra</th>${cok ? '<th class="sirala" title="sınıf içi sıra">Sınıf sıra</th>' : ''}<th class="sol sirala">No</th><th class="sol sirala">Ad</th>${cok ? '<th class="sol sirala">Sınıf</th>' : ''}`;
     s.dersler.forEach(d => { html += ayrinti ? `<th>${h(d.ad)} D</th><th>Y</th><th>B</th><th class="sirala">Net</th>` : `<th class="sirala" title="${d.soru} soru">${h(d.ad)}</th>`; });
-    html += `<th class="sirala">Toplam</th></tr></thead><tbody>`;
+    const P = puanlar(x);
+    html += `<th class="sirala">Toplam</th><th class="sirala" title="T puanı: 50 sınav ortalaması, her 10 puan bir standart sapma (başarı yüzdesine göre, sınava girenlerin hepsi içinde)">T</th><th class="sirala" title="Z puanı: ortalamadan kaç standart sapma uzakta">Z</th>`;
+    html += P.turler.map(t => `<th class="sirala" title="${P.tur === 'ara' ? 'bu netlerin TYT’deki yaklaşık puan karşılığı (OBP hariç)' : 'ÖSYM yöntemiyle tahmini sınav puanı (OBP hariç)'}">${puanBaslik(P, t)}</th>`).join('') + '</tr></thead><tbody>';
     satirlar.forEach(r => {
       html += `<tr ${r.no ? `class="tik" data-git="#/ogrenci/${encodeURIComponent(r.no)}"` : ''}><td>${r.sira}</td>${cok ? `<td>${r.sinifSira}</td>` : ''}<td class="sol">${h(r.no)}</td><td class="sol">${h(ogrAd(r.no)) || '<span class="alt">–</span>'}</td>${cok ? `<td class="sol">${h(r.sinif)}</td>` : ''}`;
       s.dersler.forEach(d => {
@@ -894,13 +2035,54 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
         if (!p) { html += ayrinti ? '<td>–</td><td>–</td><td>–</td><td>–</td>' : '<td>–</td>'; return; }
         html += ayrinti ? `<td>${p.d}</td><td>${p.y}</td><td>${p.b}</td><td class="vurgu">${sayi(p.net)}</td>` : `<td title="D ${p.d} · Y ${p.y} · B ${p.b}">${sayi(p.net)}</td>`;
       });
-      html += `<td class="vurgu">${sayi(r.toplam)}</td></tr>`;
+      const v = P.ogrenci.get(String(r.no));
+      html += `<td class="vurgu">${sayi(r.toplam)}</td><td>${sayi(r.t, 1)}</td><td>${sayi(r.z)}</td>`;
+      html += P.turler.map(t => `<td title="${h(puanIpucu(P, v, t))}" data-d="${v && v[t] != null ? v[t] : -1}">${sayi(v && v[t], 1)}</td>`).join('') + '</tr>';
     });
     const o = (sinif && x.siniflar[sinif]) || x.genel;
     html += `</tbody><tfoot><tr><td colspan="${cok ? 5 : 3}" class="sol"><b>Ortalama</b> (${o.kisi} kişi)</td>`;
     s.dersler.forEach(d => { const od = o.dersler[d.id]; html += ayrinti ? `<td>${od ? sayi(od.d, 1) : '–'}</td><td>${od ? sayi(od.y, 1) : '–'}</td><td>${od ? sayi(od.b, 1) : '–'}</td><td><b>${od ? sayi(od.net) : '–'}</b></td>` : `<td><b>${od ? sayi(od.net) : '–'}</b></td>`; });
-    html += `<td><b>${sayi(o.toplam)}</b></td></tr></tfoot></table></div>`;
+    html += `<td><b>${sayi(o.toplam)}</b></td><td></td><td></td>`;
+    html += P.turler.map(t => { const v = satirlar.map(r => P.ogrenci.get(String(r.no))).filter(z => z && z[t] != null); return `<td><b>${v.length ? sayi(v.reduce((a, z) => a + z[t], 0) / v.length, 1) : '–'}</b></td>`; }).join('');
+    html += '</tr></tfoot></table></div>';
+    html += puanBolumu(s, P);
+    html += '<p class="alt">T ve Z puanı öğrencinin bu sınava girenler arasındaki yerini gösterir; farklı zorluktaki sınavları karşılaştırmaya yarar. T = 50 + 10 × Z; 60, ortalamanın bir standart sapma üstü demektir. Küçük grupta (20–30 kişi) bir iki kişinin farkı T’yi birkaç puan oynatabilir.</p>';
     return html;
+  }
+
+  function puanBolumu(s, P) {
+    const otomatik = M.puanTuruTahmin(s);
+    let html = `<div class="kart"><div class="satir yazdirma-yok" style="margin-bottom:6px"><label class="alt">Puan</label> <select data-is="puan-turu" data-sinav="${h(s.id)}"><option value="">Kendiliğinden: ${TUR_AD[otomatik]}</option>${['tyt', 'ayt', 'ara', 'yok'].map(k => `<option value="${k}" ${s.puanTuru === k ? 'selected' : ''}>${TUR_AD[k]}</option>`).join('')}</select>`;
+    if (P.tur === 'ayt') {
+      const adaylar = durum.sinavlar.filter(z => z.id !== s.id && ['tyt', 'ara'].includes(M.puanTuru(z))).slice().reverse();
+      const kendi = M.tytEsiBul({ ...s, tytEsi: null }, durum.sinavlar);
+      html += ` <label class="alt">TYT eşi</label> <select data-is="tyt-esi" data-sinav="${h(s.id)}"><option value="">Kendiliğinden: ${kendi ? h(kendi.ad) : 'bulunamadı'}</option>${adaylar.map(z => `<option value="${h(z.id)}" ${s.tytEsi === z.id ? 'selected' : ''}>${tarihYaz(z.tarih)} · ${h(z.ad)}</option>`).join('')}</select>`;
+    }
+    html += '</div>';
+    html += P.uyari.map(u => `<div class="bilgi uyari">${h(u)}</div>`).join('');
+    const b = P.bilgi;
+    const kucultulen = b && P.turler.length ? Object.keys(b.soru).filter(k => b.olcek[k] < 1) : [];
+    const az = b && P.turler.length ? Object.keys(b.soru).filter(k => b.soru[k] < M.OSYM.test[k].soru) : [];
+    const sinavAdi = P.tur === 'ayt' ? 'AYT' : 'TYT';
+    let olcekNotu = '';
+    if (kucultulen.length) olcekNotu += ` ${sinavAdi}’den çok soru olan testte net ${sinavAdi} soru sayısına küçültülür: ${kucultulen.map(k => `${testAd(k)} ${b.soru[k]} → ${M.OSYM.test[k].soru}`).join(', ')}.`;
+    if (az.length) olcekNotu += ` ${sinavAdi}’den az soru olan testte net olduğu gibi alınır, sorulmayan konular yapılmış sayılmaz: ${az.map(k => `${testAd(k)} ${b.soru[k]} / ${M.OSYM.test[k].soru}`).join(', ')}.`;
+    if (P.tur === 'tyt') {
+      html += `<p class="alt"><b>TYT</b>: ÖSYM’nin yöntemiyle tahmini sınav puanı (OBP hariç). Her testin neti, ${M.OSYM.yil} YKS’deki son sınıf öğrencilerinin ortalaması ve standart sapmasıyla standart puana çevrilir; ÖSYM ağırlıklarıyla (Türkçe ve Temel Matematik %33, Sosyal ve Fen %17) toplanır ve 100–500 aralığına yayılır. ÖSYM bu aralığın uç değerlerini yayımlamadığı için bunlar ${M.OSYM.yil} puan dağılımından tahmin edildi; gerçek puandan birkaç puan sapabilir.${olcekNotu}</p>`;
+    } else if (P.tur === 'ara' && P.turler.length) {
+      let ac = `<b>TYT ≈</b>: bu netlerin TYT’deki yaklaşık puan karşılığı (OBP hariç), ÖSYM yöntemiyle. Netler hiçbir zaman büyütülmez.${olcekNotu}`;
+      ac += ' Bu yüzden puan, öğrenci bugün TYT’ye girse alacağı puandan çok bu sınavdaki başarısının TYT karşılığıdır; aynı düzeydeki öğrencileri ve öğrencinin gelişimini karşılaştırmak için kullanın.';
+      html += `<p class="alt">${ac}</p>`;
+    } else if (P.tur === 'ayt' && P.turler.length) {
+      html += `<p class="alt"><b>${P.turler.map(t => M.OSYM.tur[t].ad).join(', ')}</b>: ÖSYM’nin yöntemiyle tahmini sınav puanları (OBP hariç). AYT testlerinin standart puanlarına TYT eşindeki A-TYT puanının %40’ı eklenir; TYT eşine girmeyen öğrencinin puanı hesaplanmaz. Ortalama ve sapmalar ${M.OSYM.yil} YKS’den; 100–500 aralığının uçları ${M.OSYM.yil} puan dağılımından tahmin edildi, 10 puana kadar sapabilir.${olcekNotu}</p>`;
+    } else if (P.tur === 'yok') {
+      html += '<p class="alt">Bu sınav için puan hesaplanmıyor.</p>';
+    }
+    if (P.turler.length) {
+      html += `<details class="alt"><summary>1 net kaç puan?</summary>${P.turler.map(t => { const d = M.netDegeri(t); return `<p><b>${puanBaslik(P, t)}</b>: ${Object.entries(d).map(([k, v]) => `${testAd(k)} ${sayi(v)}`).join(' · ')}</p>`; }).join('')}
+        <p>Bir netin değeri testin ağırlığına ve ülke genelinde o testteki netlerin ne kadar dağıldığına bağlıdır (dağılım küçükse her net daha değerlidir), testteki soru sayısına göre orantılanmaz.${kucultulen.length ? ` Değerler ÖSYM sınavındaki bir net içindir; bu sınavda net küçültülen testlerde bir net daha az getirir: ${kucultulen.map(k => `${testAd(k)} ×${sayi(b.olcek[k])}`).join(', ')}.` : ''}</p></details>`;
+    }
+    return html + '</div>';
   }
 
   function sekmeDersler(s, x) {
@@ -950,6 +2132,38 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     });
     html += '</tbody></table></div>';
     html += `<p class="alt">Yeşil: doğru şık. Kırmızı: doğru cevaptan çok ya da ona yakın seçilen çeldirici. Ayırt edicilik 0,40 ve üstü iyi, 0,20 altı zayıf (soru gözden geçirilmeli).</p>`;
+    return html;
+  }
+
+  function sekmeKopya(s, x, sorgu) {
+    const k = M.kopyaAnalizi(x);
+    if (k.kagit < 3) return '<div class="bilgi">Kopya analizi için cevap dizisi olan en az 3 kâğıt gerekir; elle girilen sonuçlarda yapılamaz.</div>';
+    const hepsi = sorgu.hepsi === '1';
+    const isaretli = k.ciftler.filter(c => c.duzey);
+    const liste = hepsi ? k.ciftler.slice(0, Math.max(30, isaretli.length)) : isaretli;
+    const dersAd = id => (s.dersler.find(d => d.id === id) || {}).ad || id;
+    const olasilik = p => p >= 0.5 ? '–' : p < 1e-6 ? '< 1 / 1.000.000' : '1 / ' + Math.round(1 / p).toLocaleString('tr-TR');
+    const cok = Object.keys(x.siniflar).length > 1;
+    let html = `<div class="bilgi uyari"><b>Bu bir inceleme işaretidir, kanıt değildir.</b> İki öğrencinin aynı sorularda aynı yanlış şıkkı seçmesi, birbirinden bağımsız çalışan iki öğrenciden beklenenden çok fazlaysa işaretlenir. Yan yana oturmak, birlikte çalışmak ya da aynı yanlış bilgiyi aynı kaynaktan öğrenmek de benzerlik yaratır. Öğrenciyle konuşmadan önce kâğıtlara ve oturma düzenine bakın; bu sayfayı öğrenciyle ya da sınıfla paylaşmayın.</div>`;
+    html += `<div class="satir ayrik yazdirma-yok" style="margin:8px 0"><span class="alt">${k.kagit} kâğıt · ${k.ciftSayisi} çift karşılaştırıldı · <b>${isaretli.filter(c => c.duzey === 'guclu').length}</b> güçlü, <b>${isaretli.filter(c => c.duzey === 'dikkat').length}</b> dikkat</span><label class="alt"><input type="checkbox" data-is="kopya-hepsi" ${hepsi ? 'checked' : ''}> İşaretsizlerle birlikte en benzer 30 çifti göster</label></div>`;
+    if (!liste.length) return html + '<p>Bu sınavda işaretlenen çift yok.</p>';
+    html += `<div class="tablo-kap"><table><thead><tr><th class="sol">Düzey</th><th class="sol" title="altında: bu sınavdaki T puanı ← önceki denemelerin T ortalaması">Öğrenci 1</th><th class="sol" title="altında: bu sınavdaki T puanı ← önceki denemelerin T ortalaması">Öğrenci 2</th>${cok ? '<th class="sol">Sınıf</th>' : ''}<th title="ikisinin de aynı yanlış şıkkı işaretlediği soru">Ortak yanlış</th><th title="bağımsız çalışan iki öğrenciden beklenen ortak yanlış">Beklenen</th><th title="ikisinin de yanlış yaptığı soru">İkisi de yanlış</th><th title="farklı cevaplanan soru">Farklı cevap</th><th title="Harpp-Hogan oranı: ortak yanlış ÷ farklı cevap; 1 ve üstü çok yüksektir">Oran</th><th title="bu sınavda bu kadar benzer bir çiftin tesadüfen çıkma olasılığı">Tesadüf olasılığı</th><th class="sol">Derslere göre ortak yanlış</th></tr></thead><tbody>`;
+    const hs = tumHesaplar();
+    liste.forEach(c => {
+      const duzey = c.duzey === 'guclu' ? '<b class="zayif">Güçlü</b>' : c.duzey === 'dikkat' ? '<b class="orta">Dikkat</b>' : '<span class="alt">–</span>';
+      const sapma = (no) => {
+        const o = M.oncekiSapma(hs, s.id, no);
+        if (!o) return '<div class="alt">önceki deneme az</div>';
+        // ortak yanlışın olduğu derslerde aynı karşılaştırma (ipucunda)
+        const ders = Object.keys(c.ortakDers).map(id => o.dersler[id]).filter(Boolean).map(d => `${d.ad}: ${sayi(d.simdi, 0)} ← ${sayi(d.onceki, 0)} (${d.fark >= 0 ? '+' : ''}${sayi(d.fark, 0)})`).join(' · ');
+        const f = `${o.fark >= 0 ? '+' : ''}${sayi(o.fark, 0)}`;
+        return `<div class="alt" style="white-space:nowrap" title="${h(`Önceki ${o.n} deneme.` + (ders ? ' Ortak yanlışlı derslerde T: ' + ders : ''))}">T ${sayi(o.simdi, 0)} ← ${sayi(o.onceki, 0)} ${Math.round(o.fark) >= 10 ? `<b class="zayif">${f}</b>` : f}</div>`;
+      };
+      html += `<tr><td class="sol">${duzey}</td><td class="sol"><a href="#/ogrenci/${encodeURIComponent(c.a)}">${h(ogrEtiket(c.a))}</a>${sapma(c.a)}</td><td class="sol"><a href="#/ogrenci/${encodeURIComponent(c.b)}">${h(ogrEtiket(c.b))}</a>${sapma(c.b)}</td>${cok ? `<td class="sol">${h(c.sinifA === c.sinifB ? c.sinifA : c.sinifA + ' / ' + c.sinifB)}</td>` : ''}<td class="vurgu">${c.ortak}</td><td>${sayi(c.beklenen, 1)}</td><td>${c.ikisiYanlis}</td><td>${c.farkli}</td><td>${sayi(c.oran)}</td><td>${olasilik(c.pDuzeltilmis)}</td><td class="sol">${Object.entries(c.ortakDers).map(([id, n]) => `${h(dersAd(id))} ${n}`).join(' · ')}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    html += '<p class="alt">Beklenen: her soruda sınıfın yanlış şıklara dağılımından hesaplanır; herkesin düştüğü çeldiricide buluşmak az, kimsenin seçmediği şıkta buluşmak çok şey söyler. Güçlü: tesadüf olasılığı binde birden az. Dikkat: yüzde 5’ten az. Aynı çift birkaç sınavda işaretleniyorsa iz daha anlamlıdır. Yalnız aynı kitapçıktaki kâğıtlar karşılaştırılır.</p>';
+    html += '<p class="alt">Öğrenci adının altındaki “T 64 ← 48 +16”: öğrencinin bu sınavdaki T puanı ← önceki en çok 5 denemesinin T ortalaması (T, sınavların zorluk farkını giderir; en az 2 önceki deneme gerekir). +10, sınıfta bir standart sapmalık yükseliştir ve kırmızı yazılır; fare üstüne gelince ortak yanlışlı derslerin karşılaştırması görünür. Bu sütun düzeyi değiştirmez: çalışan öğrenci de yükselir. İşaretli bir çiftte yalnız birinin olağan dışı yükselmesi, kimin kimden baktığı konusunda ipucu olabilir.</p>';
     return html;
   }
 
@@ -1020,22 +2234,22 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     const kayit = new Map();
     hs.forEach((x, i) => x.satirlar.forEach(r => {
       if (!r.no) return; // numarasız kâğıt öğrenciye bağlanamaz
-      let net, basari;
+      let net, basari, t;
       if (dersAd) {
         const d = x.sinav.dersler.find(z => z.ad === dersAd);
         if (!d || !r.dersler[d.id]) return;
-        ({ net, basari } = r.dersler[d.id]);
+        ({ net, basari, t } = r.dersler[d.id]);
       } else {
-        net = r.toplam; basari = r.basari;
+        net = r.toplam; basari = r.basari; t = r.t;
       }
       const k = kayit.get(String(r.no)) || { no: r.no, sinif: r.sinif, hucre: Array(hs.length).fill(null) };
-      k.sinif = r.sinif; k.hucre[i] = { net, basari };
+      k.sinif = r.sinif; k.hucre[i] = { net, basari, t };
       kayit.set(String(r.no), k);
     }));
     const siniflar = [...new Set([...kayit.values()].map(k => k.sinif).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
     const satirlar = [...kayit.values()].filter(k => !sinif || k.sinif === sinif).map(k => {
-      const v = k.hucre.filter(Boolean), vb = v.filter(c => c.basari != null);
-      return { ...k, sayi: v.length, ortNet: v.reduce((t, c) => t + c.net, 0) / v.length, ortBasari: vb.length ? vb.reduce((t, c) => t + c.basari, 0) / vb.length : null };
+      const v = k.hucre.filter(Boolean), vb = v.filter(c => c.basari != null), vt = v.filter(c => c.t != null);
+      return { ...k, sayi: v.length, ortNet: v.reduce((t, c) => t + c.net, 0) / v.length, ortBasari: vb.length ? vb.reduce((t, c) => t + c.basari, 0) / vb.length : null, ortT: vt.length ? vt.reduce((t, c) => t + c.t, 0) / vt.length : null };
     });
     const sira = M.sirala(satirlar, k => k.ortBasari == null ? -Infinity : k.ortBasari);
     satirlar.sort((a, b) => sira.get(a) - sira.get(b) || String(a.no).localeCompare(String(b.no), 'tr', { numeric: true }));
@@ -1046,15 +2260,15 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     if (!satirlar.length) return html + '<p>Bu seçimde sonuç yok.</p>';
     html += `<div class="tablo-kap"><table><thead><tr><th class="sirala">Sıra</th><th class="sol sirala">No</th><th class="sol sirala">Ad</th>${siniflar.length > 1 ? '<th class="sol sirala">Sınıf</th>' : ''}`;
     sinavlar.forEach(s => { html += `<th class="sirala" title="${h(s.ad)}">${h(kisaTarih(s.tarih))}<br><span style="font-weight:400">${h((s.yayin || s.ad).replace(/ Yayınları$/, '').slice(0, 14))}</span></th>`; });
-    html += `<th class="sirala" title="girdiği sınav sayısı">Sınav</th><th class="sirala">Ort. net</th><th class="sirala" title="net ÷ soru sayısı ortalaması">Ort. başarı</th></tr></thead><tbody>`;
+    html += `<th class="sirala" title="girdiği sınav sayısı">Sınav</th><th class="sirala">Ort. net</th><th class="sirala" title="net ÷ soru sayısı ortalaması">Ort. başarı</th><th class="sirala" title="girdiği sınavlardaki T puanlarının ortalaması">Ort. T</th></tr></thead><tbody>`;
     satirlar.forEach(k => {
       html += `<tr class="tik" data-git="#/ogrenci/${encodeURIComponent(k.no)}"><td>${sira.get(k)}</td><td class="sol">${h(k.no)}</td><td class="sol">${h(ogrAd(k.no)) || '<span class="alt">–</span>'}</td>${siniflar.length > 1 ? `<td class="sol">${h(k.sinif)}</td>` : ''}`;
       k.hucre.forEach(c => { html += c ? `<td data-d="${c.net}" class="${c.net < 0 ? 'zayif' : ''}">${sayi(c.net)}</td>` : '<td data-d="-999" class="alt" title="sınava girmedi">–</td>'; });
-      html += `<td>${k.sayi}</td><td class="vurgu">${sayi(k.ortNet)}</td><td data-d="${k.ortBasari == null ? -99 : k.ortBasari}">${yuzde(k.ortBasari)}</td></tr>`;
+      html += `<td>${k.sayi}</td><td class="vurgu">${sayi(k.ortNet)}</td><td data-d="${k.ortBasari == null ? -99 : k.ortBasari}">${yuzde(k.ortBasari)}</td><td data-d="${k.ortT == null ? -99 : k.ortT}">${sayi(k.ortT, 1)}</td></tr>`;
     });
     html += `</tbody><tfoot><tr><td colspan="${siniflar.length > 1 ? 4 : 3}" class="sol"><b>Ortalama</b></td>`;
     sinavlar.forEach((s, i) => { const v = satirlar.map(k => k.hucre[i]).filter(Boolean); html += `<td><b>${v.length ? sayi(v.reduce((t, c) => t + c.net, 0) / v.length) : '–'}</b></td>`; });
-    html += `<td></td><td><b>${sayi(satirlar.reduce((t, k) => t + k.ortNet, 0) / satirlar.length)}</b></td><td></td></tr></tfoot></table></div>`;
+    html += `<td></td><td><b>${sayi(satirlar.reduce((t, k) => t + k.ortNet, 0) / satirlar.length)}</b></td><td></td><td></td></tr></tfoot></table></div>`;
     html += `<p class="alt">“–”: sınava girmedi; ortalamaya katılmaz. Sıra ortalama başarıya (net ÷ soru, iptal sorular hariç) göredir; soru sayısı farklı sınavlar (ör. 25 soruluk) da böylece adil karşılaştırılır. Sütun başlığına tıklayınca o sınava göre sıralanır.</p>`;
     return html;
   }
@@ -1139,11 +2353,12 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
       { ad: 'Sınıf ortalaması', renk: 'var(--soluk)', kesik: true, degerler: g.map(x => x.sinifBasari) },
     ] })}</div>`;
     const dersAdlari = [...new Set(g.flatMap(x => x.dersler.map(d => d.ad)))];
-    html += `<div class="tablo-kap"><table><thead><tr><th class="sol">Tarih</th><th class="sol">Sınav</th>${dersAdlari.map(a => `<th>${h(a)}</th>`).join('')}<th>Toplam</th><th>Sınıf ort.</th><th>Sıra</th><th>Sınıf sıra</th><th></th></tr></thead><tbody>`;
+    html += `<div class="tablo-kap"><table><thead><tr><th class="sol">Tarih</th><th class="sol">Sınav</th>${dersAdlari.map(a => `<th>${h(a)}</th>`).join('')}<th>Toplam</th><th title="T puanı: sınava girenler içinde yeri; 50 ortalama">T</th><th title="tahmini YKS puanı (OBP hariç); TYT ≈ ara sınıf denemesinin yaklaşık TYT karşılığı">Puan</th><th>Sınıf ort.</th><th>Sıra</th><th>Sınıf sıra</th><th></th></tr></thead><tbody>`;
     g.slice().reverse().forEach(x => {
       html += `<tr><td class="sol">${tarihYaz(x.tarih)}</td><td class="sol"><a href="#/sinav/${encodeURIComponent(x.sinavId)}">${h(x.sinavAd)}</a></td>`;
       dersAdlari.forEach(a => { const d = x.dersler.find(z => z.ad === a); html += `<td title="${d ? `D ${d.d} · Y ${d.y} · B ${d.b} · sınıf ort. ${sayi(d.sinifOrt)}` : ''}" class="${d && d.sinifOrt != null ? (d.net >= d.sinifOrt ? 'iyi' : 'zayif') : ''}">${d ? sayi(d.net) : '–'}</td>`; });
-      html += `<td class="vurgu">${sayi(x.toplam)}</td><td>${sayi(x.sinifOrt)}</td><td>${x.sira} / ${x.kisi}</td><td>${x.sinifSira} / ${x.sinifKisi}</td><td><a href="#/karne/${encodeURIComponent(x.sinavId)}/${encodeURIComponent(no)}">karne</a></td></tr>`;
+      const sv = sinavBul(x.sinavId), P = sv ? puanlar(hesap(sv)) : null, pv = P && P.ogrenci.get(String(no));
+      html += `<td class="vurgu">${sayi(x.toplam)}</td><td>${sayi(x.t, 1)}</td><td style="white-space:nowrap">${P && puanYazi(P, pv) || '–'}</td><td>${sayi(x.sinifOrt)}</td><td>${x.sira} / ${x.kisi}</td><td>${x.sinifSira} / ${x.sinifKisi}</td><td><a href="#/karne/${encodeURIComponent(x.sinavId)}/${encodeURIComponent(no)}">karne</a></td></tr>`;
     });
     html += '</tbody></table></div><p class="alt">Yeşil: sınıf ortalamasının üstünde ya da eşit; kırmızı: altında.</p>';
     return html;
@@ -1164,6 +2379,10 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
       html += `<tr><td class="sol">${h(d.ad)}</td><td>${d.soru}</td><td>${p.d}</td><td>${p.y}</td><td>${p.b}</td><td><b class="${so ? (p.net >= so.net ? 'iyi' : 'zayif') : ''}">${sayi(p.net)}</b></td><td>${so ? sayi(so.net) : '–'}</td>${cok ? `<td>${go ? sayi(go.net) : '–'}</td>` : ''}</tr>`;
     });
     html += `<tr><td class="sol"><b>Toplam</b></td><td>${s.dersler.filter(d => satir.dersler[d.id]).reduce((t, d) => t + d.soru, 0)}</td><td>${Object.values(satir.dersler).reduce((t, p) => t + p.d, 0)}</td><td>${Object.values(satir.dersler).reduce((t, p) => t + p.y, 0)}</td><td>${Object.values(satir.dersler).reduce((t, p) => t + p.b, 0)}</td><td><b>${sayi(satir.toplam)}</b></td><td>${sinifO ? sayi(sinifO.toplam) : '–'}</td>${cok ? `<td>${sayi(x.genel.toplam)}</td>` : ''}</tr></tbody></table>`;
+    if (a.karnePuan) {
+      const P = puanlar(x), py = puanYazi(P, P.ogrenci.get(String(no)));
+      if (py) html += `<p class="kucuk">${P.tur === 'ara' ? 'Yaklaşık TYT puanı' : 'Tahmini puan'}: <b>${py.replace(/^TYT ≈ /, '')}</b> <span style="color:#777">(${P.tur === 'ara' ? 'ÖSYM yöntemiyle, bu sınavdaki netlerin TYT karşılığı' : 'bu denemeye göre, ÖSYM yöntemiyle'}; OBP hariç)</span></p>`;
+    }
     if (a.karneSira) html += `<p class="kucuk">Sıra: genel <b>${satir.sira} / ${x.satirlar.length}</b>${sinifO && cok ? ` · sınıf içi <b>${satir.sinifSira} / ${sinifO.kisi}</b>` : ''}</p>`;
     html += '<div class="ikili">';
     if (g.length > 1) {
@@ -1215,6 +2434,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     let html = `<div class="satir ayrik yazdirma-yok" style="margin-bottom:12px"><div><div class="alt"><a href="#/sinav/${encodeURIComponent(s.id)}">${h(s.ad)}</a> ›</div><h1>Karne${kim === 'hepsi' ? 'ler' : ''}</h1><div class="alt">${satirlar.length} sayfa · PDF için yazdır penceresinde “PDF olarak kaydet” seçin.</div></div>
       <div class="satir">${kim === 'hepsi' ? sinifSecici(x, sinif) : ''}
       <label class="alt"><input type="checkbox" data-ayar="karneSira" ${a.karneSira ? 'checked' : ''}> Sıra</label>
+      <label class="alt"><input type="checkbox" data-ayar="karnePuan" ${a.karnePuan ? 'checked' : ''}> Puan</label>
       <label class="alt"><input type="checkbox" data-ayar="karneKazanim" ${a.karneKazanim ? 'checked' : ''}> Kazanımlar</label>
       <label class="alt"><input type="checkbox" data-ayar="karneSoruDokumu" ${a.karneSoruDokumu ? 'checked' : ''}> Soru dökümü</label>
       <button class="ana" data-is="yazdir">Yazdır / PDF</button></div></div>`;
@@ -1290,6 +2510,394 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     });
   }
 
+  /* ---------- optik okuma (Aşama 2) ---------- */
+  const Op = window.Optik;
+  const optikBul = (id) => (durum.optik || []).find(o => o.id === id);
+  const yerelGun = () => { const s = new Date(); return new Date(s - s.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+  // Bu cihazda okunan kâğıtlar (DB 'okuma'): sınav verisinden ayrı durur, telefondan dosya olarak gönderilir
+  let okuma = { formlar: [] };
+  // kâğıt kimliği → { dosya, nokta }: kontrol ekranındaki kesitler için, yalnız bu oturumda (fotoğraf saklanmaz)
+  const fotolar = new Map();
+  async function okumaKaydet() {
+    try { await DB.koy('okuma', okuma); return true; } catch (e) { console.error(e); bildir('Okunan kâğıtlar kaydedilemedi: ' + (e && e.message)); return false; }
+  }
+
+  /* Anahtarı tamam ve kâğıdı olan optik sınav sınavlara katılır (yeniden katılırsa güncellenir); değilse sonuç ekranlarından çekilir.
+   * Koçun sonuç ekranındaki seçimleri (puan türü, TYT eşi) optik kayıtta da tutulur: yayın geçici çekilse de kaybolmaz. */
+  function optikYayinla(op) {
+    const eski = durum.sinavlar.find(s => s.id === op.id);
+    if (eski) {
+      const ayar = {};
+      for (const k of ['puanTuru', 'tytEsi']) if (eski[k] != null) ayar[k] = eski[k];
+      op.yayinAyar = ayar;
+    }
+    if (Op.anahtarEksik(op).length || !op.kagitlar.length) { durum.sinavlar = durum.sinavlar.filter(s => s.id !== op.id); hayaletTemizle(); return; }
+    // listede olmayan numara sınıfsız öğrenci olarak eklenir; kâğıdı kalmayınca hayaletTemizle siler
+    const yeniOgr = [...new Set(op.kagitlar.map(k => k.no))].filter(no => !ogrenci(no)).map(no => ({ no, sinif: '', optik: true }));
+    const ayar = op.yayinAyar || {};
+    const yayin = Op.optikYayini(op, no => (ogrenci(no) || {}).sinif);
+    for (const k of ['puanTuru', 'tytEsi']) if (ayar[k] != null) yayin[k] = ayar[k];
+    durum = M.birlestir(durum, { sinavlar: [yayin], ogrenciler: yeniOgr, kazanimlar: [] }).durum;
+    hayaletTemizle();
+  }
+  function optikHepsiniYayinla() { for (const o of durum.optik || []) if (o && Array.isArray(o.dersler) && Array.isArray(o.kagitlar)) optikYayinla(o); }
+  // optik okumanın eklediği adsız, sınıfsız öğrenci hiçbir sınavda kâğıdı kalmayınca silinir
+  function hayaletTemizle() {
+    const kullanilan = new Set(durum.sinavlar.flatMap(s => s.kagitlar.map(k => String(k.no))));
+    durum.ogrenciler = durum.ogrenciler.filter(o => !o.optik || o.ad || o.sinif || kullanilan.has(String(o.no)));
+  }
+  // okuma formunun bu cihazdaki optik sınavı (kod ve soru sayıları tutmalı)
+  const okumaSinavi = (f) => (durum.optik || []).find(o => Op.formKodu(o.id) === f.kod && (o.secenek || 5) === f.secenek && o.dersler.map(d => d.soru).join() === f.sorular.join());
+  const kontrolKalan = (k) => (k.supheli || []).filter(s => s.secim == null).length;
+  const sinifiBilinmeyen = (nolar) => durum.ogrenciler.some(o => o.sinif) ? nolar.filter(no => no !== Op.ANAHTAR_NO && !((ogrenci(no) || {}).sinif)) : [];
+
+  function dersSatirlari(liste) {
+    return liste.map(([ad, soru]) => `<div class="satir optik-ders"><input type="text" data-alan="ad" value="${h(ad)}" placeholder="Ders adı"><input type="number" data-alan="soru" min="1" max="63" value="${soru}" style="width:80px"> soru <button data-is="optik-ders-sil" title="Dersi çıkar" aria-label="Dersi çıkar">×</button></div>`).join('');
+  }
+
+  function gorOptik() {
+    const liste = (durum.optik || []).slice().sort((a, b) => String(b.tarih).localeCompare(String(a.tarih)));
+    let html = `<div class="satir ayrik"><div><h1>Optik okuma</h1><div class="alt">Sınavın formunu buradan basın, doldurulan kâğıtları telefonla okuyun. Fotoğraflar telefonda işlenir; hiçbir yere gönderilmez.</div></div>
+      <a href="#/oku"><button class="ana">Kâğıt oku</button></a></div>`;
+    if (liste.length) {
+      html += `<div class="tablo-kap"><table><thead><tr><th class="sol">Tarih</th><th class="sol">Sınav</th><th>Ders</th><th>Soru</th><th>Kâğıt</th><th class="sol">Cevap anahtarı</th></tr></thead><tbody>`;
+      for (const o of liste) {
+        const e = Op.anahtarEksik(o).reduce((t, x) => t + x.eksik, 0);
+        html += `<tr class="tik" data-git="#/optik/${encodeURIComponent(o.id)}"><td class="sol" data-d="${h(o.tarih)}">${tarihYaz(o.tarih)}</td><td class="sol">${h(o.ad)}</td><td>${o.dersler.length}</td><td>${h(dersSoru(o))}</td><td>${o.kagitlar.length}</td><td class="sol">${e ? `<span class="rozet uyari">${e} soru eksik</span>` : '<span class="rozet">tamam</span>'}</td></tr>`;
+      }
+      html += '</tbody></table></div>';
+    }
+    html += `<div class="kart" id="optik-form"><h2 style="margin-top:0">Yeni optik sınav</h2><div class="izgara" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))">
+      <label>Sınav adı<br><input type="text" name="ad" style="width:100%" placeholder="Yayın - Sınav adı"></label>
+      <label>Tarih<br><input type="date" name="tarih" value="${yerelGun()}"></label>
+      <label>Sınıf düzeyi<br><select name="seviye">${[9, 10, 11, 12].map(v => `<option ${v === 12 ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+      <label>Yanlış götürme<br><select name="ceza"><option value="4">4 yanlış 1 doğruyu götürür</option><option value="0">Götürmez</option></select></label>
+      <label>Şık sayısı<br><select name="secenek"><option value="5">5 (A–E)</option><option value="4">4 (A–D)</option></select></label>
+      <label>Kitapçık<br><select name="kitapcikB"><option value="">Tek kitapçık</option><option value="1">A ve B kitapçığı</option></select></label>
+      </div>
+      <h2>Dersler</h2><div class="satir"><select data-is="optik-sablon" aria-label="Ders düzeni"><option value="tyt">TYT düzeni</option><option value="ayt">AYT düzeni</option><option value="ara">Ara sınıf (4 ders)</option></select><span class="alt">Ders adlarını ve soru sayılarını sınavın kitapçığına göre düzeltin; sıra formdaki sıradır.</span></div>
+      <div id="optik-dersler">${dersSatirlari(Op.SABLONLAR.tyt)}</div>
+      <div class="satir"><button data-is="optik-ders-ekle">Ders ekle</button><span class="alt" id="optik-sigma"></span></div>
+      <p><button class="ana" data-is="optik-olustur">Sınavı oluştur</button></p></div>`;
+    return html;
+  }
+
+  function optikGirdi() {
+    const f = $('#optik-form');
+    const v = (n) => f.querySelector(`[name="${n}"]`).value;
+    const dersler = [...f.querySelectorAll('.optik-ders')].map(r => ({ ad: r.querySelector('[data-alan="ad"]').value, soru: Number(r.querySelector('[data-alan="soru"]').value) }));
+    return { ad: v('ad'), tarih: v('tarih'), seviye: Number(v('seviye')), ceza: Number(v('ceza')), secenek: Number(v('secenek')), kitapcikB: !!v('kitapcikB'), dersler };
+  }
+  function optikSigmaGuncelle() {
+    const e = $('#optik-sigma'); if (!e) return;
+    const g = optikGirdi();
+    const sorular = g.dersler.map(d => d.soru);
+    const d = sorular.length && sorular.every(n => Number.isInteger(n) && n >= 1) ? Op.formDuzeni({ secenek: g.secenek, sorular }) : { hata: 'Soru sayılarını girin.' };
+    if (d.hata) { e.textContent = d.hata; e.className = 'zayif'; return; }
+    const satir = d.kabarcik.length + d.basliklar.length;
+    e.textContent = `${sorular.reduce((a, b) => a + b, 0)} soru; form tek sayfaya sığıyor (${satir} / ${d.sutun * d.satir} satır).`;
+    e.className = 'alt';
+  }
+  let olusturuyor = false;
+  async function optikOlustur() {
+    if (olusturuyor) return;
+    const r = Op.optikSinav(optikGirdi());
+    if (r.hata) return bildir(r.hata);
+    durum.optik = [...(durum.optik || []), r.sinav];
+    olusturuyor = true;
+    let tamam;
+    try { tamam = await kaydet(); } finally { olusturuyor = false; }
+    if (!tamam) { durum.optik = durum.optik.filter(o => o !== r.sinav); return; }
+    location.hash = '#/optik/' + encodeURIComponent(r.sinav.id);
+    bildir('Optik sınav oluşturuldu. Formu yazdırıp cevap anahtarını girin.');
+  }
+
+  let optikRapor = '';
+  function gorOptikSinav(id) {
+    const o = optikBul(id);
+    if (!o) return '<p>Optik sınav bulunamadı. <a href="#/optik">Optik okumaya dön</a></p>';
+    const enc = encodeURIComponent(o.id);
+    const eksik = Op.anahtarEksik(o);
+    const yayinda = durum.sinavlar.some(s => s.id === o.id);
+    const rapor = optikRapor; optikRapor = '';
+    let html = `<div class="satir ayrik"><div><div class="alt"><a href="#/optik">Optik okuma</a> ›</div><h1>${h(o.ad)}</h1>
+      <div class="alt">${tarihYaz(o.tarih)}${o.seviye ? ' · ' + h(o.seviye) + '. sınıf' : ''} · ${o.dersler.map(d => `${h(d.ad)} ${h(d.soru)}`).join(', ')} soru · ${h(o.secenek)} şık · ${o.kitapcikB ? 'A ve B kitapçığı' : 'tek kitapçık'} · ${o.ceza ? h(o.ceza) + ' yanlış 1 doğruyu götürür' : 'yanlış doğruyu götürmez'}</div></div>
+      <div class="satir"><a href="#/optik/${enc}/form"><button>Formu yazdır</button></a><a href="#/oku"><button>Kâğıt oku</button></a>${yayinda ? `<a href="#/sinav/${enc}"><button class="ana">Sonuçlar</button></a>` : ''}</div></div>${rapor}`;
+    if (!yayinda) html += `<div class="bilgi uyari" id="optik-yayin">${eksik.length ? `Sonuçlar cevap anahtarı tamamlanınca görünür (eksik: ${eksik.map(e => `${h(e.ders)}${o.kitapcikB ? ' ' + e.kitapcik : ''} ${e.eksik}`).join(', ')}).` : 'Cevap anahtarı tamam; kâğıtlar okununca sonuçlar görünür.'}</div>`;
+    html += `<div class="kart"><b>Cevap anahtarı</b><p class="alt">Her dersin şıklarını sırayla yazın ya da yapıştırın: <code>ABCDE…</code> ya da <code>1-A 2-B …</code> (numara ve boşluklar atlanır). İptal soru <code>X</code>, iki doğru şık <code>[AB]</code>, henüz bilinmeyen <code>?</code>. Ya da bir formu anahtar olarak doldurun, okul numarasına <b>00000</b> kodlayıp öğrenci kâğıtlarıyla birlikte okutun.</p>`;
+    for (const k of o.kitapcikB ? ['A', 'B'] : ['A']) {
+      if (o.kitapcikB) html += `<h2>${k} kitapçığı</h2>`;
+      html += '<div class="izgara anahtar">' + o.dersler.map(d => {
+        const a = d.anahtar[k] || [];
+        const n = a.filter(Boolean).length;
+        return `<label>${h(d.ad)} <span class="${n === d.soru ? 'iyi' : 'alt'}" data-anahtar-durum>${n} / ${d.soru}${n === d.soru ? ' ✓' : ''}</span><br><input type="text" data-is="anahtar" data-op="${h(o.id)}" data-ders="${h(d.id)}" data-kit="${k}" value="${n ? h(Op.anahtarYazi(a)) : ''}" spellcheck="false" autocomplete="off" autocapitalize="characters"></label>`;
+      }).join('') + '</div>';
+    }
+    html += '</div>';
+    if (o.kagitlar.length) {
+      const x = yayinda ? hesap(sinavBul(o.id)) : null;
+      const net = new Map(x ? x.satirlar.map(s => [String(s.no), s.toplam]) : []);
+      const bilinmeyen = new Set(sinifiBilinmeyen(o.kagitlar.map(k => k.no)));
+      const sirali = o.kagitlar.slice().sort((a, b) => a.no.localeCompare(b.no, 'tr', { numeric: true }));
+      html += `<h2>Okunan kâğıtlar (${o.kagitlar.length})</h2><div class="tablo-kap"><table><thead><tr><th class="sol">Okul no</th><th class="sol">Ad</th>${o.kitapcikB ? '<th>Kitapçık</th>' : ''}<th>Boş</th><th>Çift işaret</th><th>Toplam net</th><th></th></tr></thead><tbody>`;
+      for (const k of sirali) {
+        const say = (c) => k.cevaplar.join('').split(c).length - 1;
+        html += `<tr><td class="sol">${h(k.no)}</td><td class="sol">${h(ogrAd(k.no)) || (bilinmeyen.has(k.no) ? '<span class="rozet uyari">sınıfı bilinmiyor</span>' : '<span class="alt">–</span>')}</td>${o.kitapcikB ? `<td>${h(k.kitapcik)}${k.kitapcikBos ? ' <span class="rozet uyari">boş</span>' : ''}</td>` : ''}<td>${say('-')}</td><td>${say('*')}</td><td class="vurgu">${net.has(k.no) ? sayi(net.get(k.no)) : '–'}</td><td><button data-is="optik-kagit-sil" data-op="${h(o.id)}" data-no="${h(k.no)}">Sil</button></td></tr>`;
+      }
+      html += '</tbody></table></div>';
+      if (bilinmeyen.size) html += `<p class="alt">“Sınıfı bilinmiyor”: numara öğrenci listesinde sınıfıyla yok; öğrenci numarasını yanlış kodlamış olabilir.</p>`;
+    }
+    html += `<p style="margin-top:24px"><button data-is="optik-sil" data-op="${h(o.id)}">Optik sınavı sil</button></p>`;
+    return html;
+  }
+
+  async function anahtarDegisti(t) {
+    const o = optikBul(t.dataset.op); if (!o) return;
+    const d = o.dersler.find(x => x.id === t.dataset.ders); if (!d) return;
+    const r = Op.anahtarCoz(t.value, d.soru, o.secenek);
+    const durumE = t.closest('label').querySelector('[data-anahtar-durum]');
+    if (r.hata && (r.gecersiz || r.fazla)) {
+      t.classList.add('hatali'); durumE.textContent = r.hata; durumE.className = 'zayif';
+      return;
+    }
+    t.classList.remove('hatali');
+    const dizi = r.dizi.concat(Array(d.soru - r.dizi.length).fill(''));
+    const yayindaydi = durum.sinavlar.some(s => s.id === o.id);
+    d.anahtar[t.dataset.kit] = dizi; o.degisti = Date.now();
+    optikYayinla(o);
+    if (!(await kaydet())) return;
+    const n = dizi.filter(Boolean).length;
+    if (yayindaydi !== durum.sinavlar.some(s => s.id === o.id)) { yonlendir(); bildir(yayindaydi ? 'Anahtar eksik; sonuçlar çekildi.' : 'Anahtar tamam; sonuçlar hazır.'); return; }
+    durumE.textContent = `${n} / ${d.soru}${n === d.soru ? ' ✓' : ''}`; durumE.className = n === d.soru ? 'iyi' : 'alt';
+    const ust = $('#optik-yayin');
+    if (ust) { const e = Op.anahtarEksik(o); ust.textContent = e.length ? `Sonuçlar cevap anahtarı tamamlanınca görünür (eksik: ${e.map(x => `${x.ders}${o.kitapcikB ? ' ' + x.kitapcik : ''} ${x.eksik}`).join(', ')}).` : 'Cevap anahtarı tamam; kâğıtlar okununca sonuçlar görünür.'; }
+  }
+
+  function gorOptikForm(id) {
+    const o = optikBul(id);
+    if (!o) return '<p>Optik sınav bulunamadı. <a href="#/optik">Optik okumaya dön</a></p>';
+    const svg = Op.formSvg(Op.formTanimi(o), { baslik: o.ad, altBaslik: o.tarih ? o.tarih.split('-').reverse().join('.') : '' });
+    return `<div class="satir ayrik yazdirma-yok"><div><div class="alt"><a href="#/optik/${encodeURIComponent(o.id)}">${h(o.ad)}</a> ›</div><h1>Optik form</h1>
+      <div class="alt">A4 kâğıda basın; bir kez basıp fotokopiyle çoğaltabilirsiniz. Köşedeki altı kare ve üstteki kod şeridi kesilmeden çıkmalı. Matbaaya göndermek için yazdır penceresinde “PDF olarak kaydet” seçin.</div></div>
+      <button class="ana" data-is="yazdir">Yazdır</button></div><div class="optik-form">${svg}</div>`;
+  }
+
+  /* --- telefonda okuma --- */
+  function gorOku() {
+    let html = `<h1>Kâğıt oku</h1><p class="alt">Kâğıdı düz ve aydınlık bir yere koyun; altı köşe karesi görünecek biçimde, yukarıdan ve yakından çekin. Fotoğraf bu cihazda okunur; hiçbir yere gönderilmez, saklanmaz.</p>
+      <div class="satir oku-dugmeler"><label class="dugme ana">Fotoğraf çek<input type="file" accept="image/*" capture="environment" data-is="oku-dosya" class="gizli"></label><label class="dugme">Galeriden seç<input type="file" accept="image/*" multiple data-is="oku-dosya" class="gizli"></label></div>
+      <div id="oku-ilerleme" aria-live="polite"></div>`;
+    if (!okuma.formlar.length) return html + '<p class="alt">Henüz kâğıt okunmadı.</p>';
+    for (const f of okuma.formlar) {
+      const o = okumaSinavi(f);
+      const kalan = f.kagitlar.filter(k => kontrolKalan(k)).length;
+      const sayac = {}; f.kagitlar.forEach(k => { if (k.no && k.no !== Op.ANAHTAR_NO) sayac[k.no] = (sayac[k.no] || 0) + 1; }); // A ve B anahtar kâğıtları ayrı işlenir
+      html += `<div class="kart"><div class="satir ayrik"><div><b>${o ? h(o.ad) : 'Form ' + h(f.kod)}</b><div class="alt">${f.sorular.length} ders, ${f.sorular.reduce((a, b) => a + b, 0)} soru · ${f.kagitlar.length} kâğıt${kalan ? ` · <span class="zayif">${kalan} kâğıtta kontrol bekliyor</span>` : ''}${f.gonderildi ? ` · gönderildi (${new Date(f.gonderildi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })})` : ''}</div></div>
+        <div class="satir">${o ? `<button class="ana" data-is="oku-ekle" data-kod="${f.kod}">Sınava ekle</button>` : ''}<button ${o ? '' : 'class="ana"'} data-is="oku-gonder" data-kod="${f.kod}">Dosya olarak gönder</button><button data-is="oku-temizle" data-kod="${f.kod}">Listeyi temizle</button></div></div>
+        <div class="tablo-kap"><table><thead><tr><th>Sıra</th><th class="sol">Okul no</th><th>Kitapçık</th><th class="sol">Durum</th></tr></thead><tbody>`;
+      f.kagitlar.map((k, i) => [k, i]).reverse().forEach(([k, i]) => {
+        const n = kontrolKalan(k);
+        const durumY = k.no === Op.ANAHTAR_NO ? '<span class="rozet">cevap anahtarı</span>'
+          : !k.no ? '<span class="zayif">numara okunamadı</span>'
+            : sayac[k.no] > 1 ? '<span class="zayif">aynı numara iki kez</span>'
+              : n ? `<span class="zayif">${n} yer kontrol edilecek</span>` : '<span class="iyi">tamam ✓</span>';
+        html += `<tr class="tik" data-git="#/oku/${k.id}"><td>${i + 1}</td><td class="sol">${h(k.no) || '?'}</td><td>${k.kitapcikBos ? '–' : k.kitapcik}</td><td class="sol">${durumY}</td></tr>`;
+      });
+      html += '</tbody></table></div></div>';
+    }
+    return html;
+  }
+
+  async function goruntuAc(dosya, enCok = 2400) {
+    const bmp = await createImageBitmap(dosya, { imageOrientation: 'from-image' });
+    const k = Math.min(1, enCok / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * k), yuk = Math.round(bmp.height * k);
+    const c = document.createElement('canvas'); c.width = w; c.height = yuk;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(bmp, 0, 0, w, yuk);
+    if (bmp.close) bmp.close();
+    return { c, x, w, yuk };
+  }
+
+  function kagitEkle(r) {
+    const t = r.tanim;
+    let f = okuma.formlar.find(x => x.kod === t.kod && x.secenek === t.secenek && x.sorular.join() === t.sorular.join());
+    if (!f) { f = { kod: t.kod, secenek: t.secenek, sorular: t.sorular.slice(), kagitlar: [] }; okuma.formlar.unshift(f); }
+    const k = {
+      id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), no: r.no, kitapcik: r.kitapcik, kitapcikBos: r.kitapcikBos,
+      cevaplar: r.cevaplar.slice(), supheli: r.supheli.map(s => ({ ...s })), zaman: Date.now(),
+    };
+    f.kagitlar.push(k); f.gonderildi = null;
+    return k;
+  }
+
+  let okuyor = false;
+  async function fotoOku(dosyalar) {
+    if (!dosyalar.length) return;
+    if (okuyor) return bildir('Önceki fotoğraf okunuyor; bitince yeniden deneyin.');
+    okuyor = true;
+    const ilerleme = (m) => { const e = $('#oku-ilerleme'); if (e) e.innerHTML = m; };
+    const hatalar = []; let son = null, okunan = 0, kayitli = true;
+    try {
+      for (let i = 0; i < dosyalar.length; i++) {
+        ilerleme(`<div class="bilgi">${dosyalar.length > 1 ? `${i + 1} / ${dosyalar.length} · ` : ''}Okunuyor…</div>`);
+        await new Promise(r => setTimeout(r, 30)); // yazı ekrana çıksın
+        try {
+          const g = await goruntuAc(dosyalar[i]);
+          const r = Op.formOku(Op.griyeCevir(g.x.getImageData(0, 0, g.w, g.yuk).data, g.w, g.yuk, 2400));
+          if (r.hata) { hatalar.push(`${h(dosyalar[i].name)}: ${h(r.hata)}`); continue; }
+          son = kagitEkle(r); okunan++;
+          fotolar.set(son.id, { dosya: dosyalar[i], nokta: r.nokta });
+        } catch (e) { console.error(e); hatalar.push(`${h(dosyalar[i].name)}: fotoğraf açılamadı (${h(e && e.message)}).`); }
+      }
+      if (okunan) kayitli = await okumaKaydet();
+    } finally { okuyor = false; }
+    if (dosyalar.length === 1 && son && kontrolKalan(son)) { location.hash = '#/oku/' + son.id; return; }
+    yonlendir();
+    if (hatalar.length) ilerleme(`<div class="bilgi hata"><b>Okunamadı:</b><br>${hatalar.join('<br>')}</div>`);
+    if (son && kayitli) bildir(dosyalar.length === 1 ? `Okundu: okul no ${son.no || '?'}.` : `${okunan} kâğıt okundu.`);
+  }
+
+  const kagitBul = (id) => { for (const f of okuma.formlar) { const k = f.kagitlar.find(x => x.id === id); if (k) return { f, k }; } return null; };
+
+  function gorKontrol(id) {
+    const b = kagitBul(id);
+    if (!b) return '<p>Kâğıt bulunamadı. <a href="#/oku">Kâğıt okumaya dön</a></p>';
+    const { f, k } = b;
+    const o = okumaSinavi(f);
+    const adlar = o ? o.dersler.map(d => d.ad) : f.sorular.map((_, i) => `Ders ${i + 1}`);
+    const foto = fotolar.has(id);
+    const ikinci = k.no && k.no !== Op.ANAHTAR_NO && f.kagitlar.filter(x => x.no === k.no).length > 1;
+    const noS = k.supheli.find(s => s.alan === 'no'), kitS = k.supheli.find(s => s.alan === 'kitapcik');
+    let html = `<div class="satir ayrik"><div><div class="alt"><a href="#/oku">Kâğıt oku</a> ›</div><h1>Kâğıt kontrolü</h1>
+      <div class="alt">${o ? h(o.ad) + ' · ' : ''}${foto ? 'Belirsiz yerler aşağıda; kâğıda bakarak doğru olanı seçin.' : 'Fotoğraf bu oturumda yok: kâğıda bakarak seçin ya da kâğıdı yeniden çekin.'}</div></div>
+      <div class="satir"><button data-is="kontrol-sil" data-id="${id}">Kâğıdı sil</button><a href="#/oku"><button class="ana">Bitti</button></a></div></div>
+      <div class="kart kontrol-ust"><div class="satir">
+        <label>Okul no<br><input type="text" inputmode="numeric" maxlength="5" data-is="kontrol-no" data-id="${id}" value="${h(k.no)}" style="width:110px"></label>
+        <div>Kitapçık<br>${['A', 'B'].map(c => `<button data-is="kontrol-kit" data-id="${id}" data-c="${c}" class="${!k.kitapcikBos && k.kitapcik === c ? 'secili' : ''}">${c}</button>`).join(' ')}</div></div>
+        ${k.no === Op.ANAHTAR_NO ? '<p class="alt">Okul no 00000: bu kâğıt cevap anahtarı olarak alınır.</p>' : ''}
+        ${noS && noS.secim == null ? `<p class="zayif">Okul numarası net okunamadı; kâğıttakiyle karşılaştırıp düzeltin. <button data-is="kontrol-no-onay" data-id="${id}">Numara doğru</button></p>` : ''}
+        ${ikinci ? '<p class="zayif">Bu numara bu listede iki kez var; birini düzeltin ya da silin.</p>' : ''}
+        ${kitS && kitS.secim == null ? '<p class="zayif">Kitapçık işareti belirsiz; kâğıda bakıp seçin.</p>' : ''}
+        ${foto ? '<canvas class="kirpik" data-kirp="no"></canvas>' : ''}</div>`;
+    const sorular = k.supheli.map((s, i) => [s, i]).filter(([s]) => s.alan === 'soru');
+    if (sorular.length) html += `<h2>Belirsiz işaretler (${sorular.length})</h2>`;
+    for (const [s, i] of sorular) {
+      const c = k.cevaplar[s.ders][s.soru];
+      html += `<div class="kart kontrol-soru${s.secim != null ? ' bitti' : ''}"><div class="satir ayrik"><b>${h(adlar[s.ders])} · ${s.soru + 1}. soru</b><span class="alt">${s.hiza ? 'kâğıt burada bükük' : ''}</span></div>
+        ${foto ? `<canvas class="kirpik" data-kirp="${i}"></canvas>` : ''}
+        <div class="satir secenekler">${[...Op.HARF.slice(0, f.secenek), '-', '*'].map(x => `<button data-is="kontrol-sec" data-id="${id}" data-i="${i}" data-c="${x}" class="${x === c ? 'secili' : ''}">${x === '-' ? 'Boş' : x === '*' ? 'Çift' : x}</button>`).join('')}</div></div>`;
+    }
+    if (sorular.length > 1) html += `<p><button data-is="kontrol-hepsi" data-id="${id}">Kalanları okunduğu gibi onayla</button></p>`;
+    if (!sorular.length) html += '<p class="alt">Bu kâğıtta belirsiz işaret yok.</p>';
+    return html;
+  }
+
+  // kontrol ekranındaki kesitler: fotoğraf bir kez açılır, her belirsiz yer sayfa düzleminde düz çizilir
+  let kesitGoruntu = null;
+  async function kesitleriCiz(id) {
+    const ft = fotolar.get(id), b = kagitBul(id);
+    if (!ft || !b) return;
+    if (!kesitGoruntu || kesitGoruntu.id !== id) kesitGoruntu = { id, g: await goruntuAc(ft.dosya) };
+    const duzen = Op.formDuzeni({ secenek: b.f.secenek, sorular: b.f.sorular });
+    document.querySelectorAll('canvas[data-kirp]').forEach(cv => {
+      const a = cv.dataset.kirp;
+      const s = a === 'no' ? { alan: 'no' } : b.k.supheli[Number(a)];
+      if (!s) return;
+      const r = Op.kontrolAlani(duzen, s);
+      const W = Math.min(520, Math.round((r.x1 - r.x0) * 9)), H = Math.round(W * (r.y1 - r.y0) / (r.x1 - r.x0));
+      cv.width = W; cv.height = H;
+      const [ax, ay] = ft.nokta(r.x0, r.y0), [bx, by] = ft.nokta(r.x1, r.y0), [cx, cy] = ft.nokta(r.x0, r.y1);
+      // tuval → fotoğraf afin dönüşümü [a c; b d]; tuvale fotoğraftan tuvale (tersi) uygulanır
+      const m = [(bx - ax) / W, (by - ay) / W, (cx - ax) / H, (cy - ay) / H];
+      const det = m[0] * m[3] - m[1] * m[2];
+      if (!det) return;
+      const t = [m[3] / det, -m[1] / det, -m[2] / det, m[0] / det];
+      const x = cv.getContext('2d');
+      x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+      x.setTransform(t[0], t[1], t[2], t[3], -(t[0] * ax + t[2] * ay), -(t[1] * ax + t[3] * ay));
+      x.drawImage(kesitGoruntu.g.c, 0, 0);
+      x.setTransform(1, 0, 0, 1, 0, 0);
+    });
+  }
+
+  async function kontrolSec(id, i, c, dugme) {
+    const b = kagitBul(id); if (!b) return;
+    const s = b.k.supheli[i]; if (!s || s.alan !== 'soru') return;
+    const dizi = [...b.k.cevaplar[s.ders]]; dizi[s.soru] = c; b.k.cevaplar[s.ders] = dizi.join('');
+    s.secim = c;
+    if (dugme) {
+      dugme.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('secili', x === dugme));
+      dugme.closest('.kontrol-soru').classList.add('bitti');
+    }
+    if ((await okumaKaydet()) && !kontrolKalan(b.k)) bildir('Bu kâğıt tamam.');
+  }
+
+  /* Sorunlar gönderilmeden önce gösterilir */
+  function okumaSorunlari(f) {
+    const s = [];
+    const kalan = f.kagitlar.filter(k => k.no && kontrolKalan(k)).length;
+    const nosuz = f.kagitlar.filter(k => !k.no).length;
+    const sayac = {}; f.kagitlar.forEach(k => { if (k.no && k.no !== Op.ANAHTAR_NO) sayac[k.no] = (sayac[k.no] || 0) + 1; }); // A ve B anahtar kâğıtları ayrı işlenir
+    const iki = Object.keys(sayac).filter(n => sayac[n] > 1);
+    if (kalan) s.push(`${kalan} kâğıtta kontrol edilmemiş yer var; okunduğu gibi gönderilir.`);
+    if (nosuz) s.push(`${nosuz} kâğıdın okul numarası yok; bu kâğıtlar gönderilmez.`);
+    if (iki.length) s.push(`Aynı numara birden çok kâğıtta: ${iki.join(', ')}. Sonraki okunan öncekinin yerine geçer.`);
+    return s;
+  }
+  function okumaVerisi(f) {
+    return {
+      bicim: 'deneme-takip/optik', surum: 1, tarih: new Date().toISOString(),
+      formlar: [{ kod: f.kod, secenek: f.secenek, sorular: f.sorular, kagitlar: f.kagitlar.filter(k => k.no).map(k => ({ no: k.no, kitapcik: k.kitapcik, kitapcikBos: k.kitapcikBos, cevaplar: k.cevaplar, kontrol: kontrolKalan(k), zaman: k.zaman })) }],
+    };
+  }
+  async function okumaGonder(kod) {
+    const f = okuma.formlar.find(x => x.kod === kod); if (!f) return;
+    const sorun = okumaSorunlari(f);
+    if (sorun.length && !(await sec('Göndermeden önce', sorun.map(h).join('<br>'), [{ ad: 'Kontrole dön', deger: null, ana: true }, { ad: 'Yine de gönder', deger: 1 }]))) return;
+    const metin = JSON.stringify(okumaVerisi(f));
+    const ad = `optik-okuma-${yerelGun()}-${f.kod}`;
+    // Android paylaşımı JSON dosyasını kabul etmez; içerik aynı, uzantı .txt (PC'deki uygulama ikisini de alır)
+    const dosya = new File([metin], ad + '.txt', { type: 'text/plain' });
+    let gitti = false;
+    if (navigator.canShare && navigator.canShare({ files: [dosya] })) {
+      try { await navigator.share({ files: [dosya], title: 'Optik okuma' }); gitti = true; } catch (e) { if (e && e.name === 'AbortError') return; console.warn(e); }
+    }
+    if (!gitti) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([metin], { type: 'application/json' }));
+      a.download = ad + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }
+    f.gonderildi = Date.now();
+    const kayitli = await okumaKaydet(); yonlendir();
+    if (kayitli) bildir(gitti ? 'Gönderildi. PC’de Veri ve yedek sayfasında bu dosyayı seçin.' : 'Dosya indirildi. Drive’a koyup PC’de Veri ve yedek sayfasında seçin.');
+  }
+
+  /* Okuma dosyasını (telefondan gelen ya da bu cihazdaki) optik sınavlara katar; rapor HTML'i ve değişen sınavlar */
+  async function optikOkumaAl(veri) {
+    if (!(durum.optik || []).length) return { html: '<div class="bilgi hata"><b>Optik okuma alınmadı.</b> Bu tarayıcıda optik sınav yok. Formu basan bilgisayarda açın ya da onun yedeğini önce buraya geri yükleyin.</div>', degisen: [] };
+    const { degisen, rapor } = Op.okumaAl(durum.optik, veri);
+    degisen.forEach(optikYayinla);
+    // önceki deneme kaydedilemediyse kâğıtlar bellekte "aynı" görünür; yine de kaydet
+    if ((degisen.length || kayitBekliyor) && !(await kaydet())) return { html: KAYIT_HATASI, degisen, kayitHatasi: true };
+    const bos = !rapor.yeni && !rapor.guncel && !rapor.anahtar;
+    let html = `<div class="bilgi${bos ? ' uyari' : ''}"><b>${bos ? 'Yeni bir şey alınmadı.' : 'Optik okuma alındı.'}</b> Yeni kâğıt ${rapor.yeni}, güncellenen ${rapor.guncel}${rapor.guncelNo.length ? ` (okul no ${rapor.guncelNo.slice(0, 12).map(h).join(', ')}${rapor.guncelNo.length > 12 ? '…' : ''})` : ''}${rapor.anahtar ? `, cevap anahtarı kâğıdı ${rapor.anahtar}` : ''}.</div>`;
+    if (rapor.eski) html += `<div class="bilgi uyari">${rapor.eski} kâğıt alınmadı: aynı numaranın daha yeni okunmuş kâğıdı zaten var (eski bir dosya seçilmiş olabilir).</div>`;
+    for (const o of degisen) {
+      const yayinda = durum.sinavlar.some(s => s.id === o.id);
+      html += `<div class="bilgi${yayinda ? '' : ' uyari'}"><a href="#/optik/${encodeURIComponent(o.id)}">${h(o.ad)}</a>: ${yayinda ? `${o.kagitlar.length} kâğıt. <a href="#/sinav/${encodeURIComponent(o.id)}">Sonuçlar</a>` : 'sonuçlar cevap anahtarı tamamlanınca görünür.'}</div>`;
+      const bil = sinifiBilinmeyen(o.kagitlar.map(k => k.no));
+      if (bil.length) html += `<div class="bilgi uyari">${h(o.ad)}: öğrenci listesinde sınıfıyla olmayan numara: ${bil.slice(0, 12).map(h).join(', ')}${bil.length > 12 ? '…' : ''}. Yanlış kodlanmış olabilir; kâğıtlara bakın.</div>`;
+    }
+    if (rapor.bilinmeyenForm.length) html += `<div class="bilgi hata">${rapor.bilinmeyenForm.length} formun sınavı bu tarayıcıda yok (form kodu ${rapor.bilinmeyenForm.map(h).join(', ')}). Formu basan bilgisayarın yedeğini önce buraya geri yükleyin.</div>`;
+    if (rapor.uyusmayan.length) html += `<div class="bilgi hata">Ders ya da soru sayısı tutmadığı için alınmadı: ${rapor.uyusmayan.map(h).join(', ')}.</div>`;
+    if (rapor.kontrolsuz) html += `<div class="bilgi uyari">${rapor.kontrolsuz} kâğıt telefonda kontrol edilmeden gönderildi; belirsiz işaretler okunduğu gibi alındı.</div>`;
+    const uy = [...new Set(rapor.uyari)];
+    if (uy.length) html += `<div class="bilgi uyari">${uy.slice(0, 10).map(h).join('<br>')}${uy.length > 10 ? `<br>… ve ${uy.length - 10} uyarı daha` : ''}</div>`;
+    return { html, degisen };
+  }
+
   /* ---------- veri ve yedek ---------- */
   function gorVeri() {
     const a = ayar();
@@ -1303,6 +2911,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
       <div class="kart"><b>Özet</b><p>${durum.sinavlar.length} sınav · ${durum.ogrenciler.length} öğrenci (${durum.ogrenciler.filter(o => o.ad).length} adlı) · ${durum.kazanimlar.length} kazanım</p></div>
       <div class="kart"><b>Ayarlar</b><div class="satir" style="margin-top:8px">
         <label><input type="checkbox" data-ayar="karneSira" ${a.karneSira ? 'checked' : ''}> Karnede sıra</label>
+        <label><input type="checkbox" data-ayar="karnePuan" ${a.karnePuan ? 'checked' : ''}> Karnede tahmini puan</label>
         <label><input type="checkbox" data-ayar="karneKazanim" ${a.karneKazanim ? 'checked' : ''}> Karnede kazanımlar</label>
         <label><input type="checkbox" data-ayar="karneSoruDokumu" ${a.karneSoruDokumu ? 'checked' : ''}> Karnede soru dökümü</label>
         <label>Sınıf ekranında ilk <select data-ayar-sec="tahtaKisi">${[3, 5, 7, 10].map(n => `<option ${n === a.tahtaKisi ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div></div>
@@ -1332,7 +2941,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
   function yonlendir() {
     const { parca, sorgu } = hashCoz();
     const kok = parca[0] || 'sinavlar';
-    document.querySelectorAll('#menu a').forEach(a => a.classList.toggle('secili', a.dataset.kok === kok || (kok === 'sinav' && a.dataset.kok === 'sinavlar') || ((kok === 'ogrenci' || kok === 'ozet') && a.dataset.kok === 'ogrenciler')));
+    document.querySelectorAll('#menu a').forEach(a => a.classList.toggle('secili', a.dataset.kok === kok || (kok === 'sinav' && a.dataset.kok === 'sinavlar') || (kok === 'oku' && a.dataset.kok === 'optik') || ((kok === 'ogrenci' || kok === 'ozet') && a.dataset.kok === 'ogrenciler')));
     let html;
     try {
       if (kok === 'sinavlar') html = gorSinavlar(sorgu);
@@ -1344,6 +2953,8 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
       else if (kok === 'karne') html = gorKarne(parca[1], parca[2] || 'hepsi', sorgu);
       else if (kok === 'tahta') html = gorTahta(parca[1], sorgu);
       else if (kok === 'elle') html = gorElle(sorgu);
+      else if (kok === 'optik') html = !parca[1] ? gorOptik() : parca[2] === 'form' ? gorOptikForm(parca[1]) : gorOptikSinav(parca[1]);
+      else if (kok === 'oku') html = parca[1] ? gorKontrol(parca[1]) : gorOku();
       else if (kok === 'veri') html = gorVeri();
       else html = gorSinavlar(sorgu);
     } catch (e) {
@@ -1354,6 +2965,8 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     tabloSiralanir(ekran());
     surukleBagla();
     if (kok === 'elle') elleToplamGuncelle();
+    if (kok === 'optik' && !parca[1]) optikSigmaGuncelle();
+    if (kok === 'oku' && parca[1]) kesitleriCiz(parca[1]).catch(e => console.error(e));
     const baslik = ekran().querySelector('h1');
     document.title = (baslik ? baslik.textContent.trim() + ' · ' : '') + 'Deneme Takip';
     ekran().querySelectorAll('tr[data-git]').forEach(tr => { tr.tabIndex = 0; });
@@ -1391,6 +3004,61 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     else if (is === 'elle-basla') elleBasla();
     else if (is === 'elle-vazgec') { if (confirm('Girilen değerler silinsin mi?')) { delete durum.elleTaslak; await kaydet(); yonlendir(); } }
     else if (is === 'elle-kaydet') elleKaydet();
+    else if (is === 'optik-ders-ekle') { $('#optik-dersler').insertAdjacentHTML('beforeend', dersSatirlari([['', 20]])); optikSigmaGuncelle(); }
+    else if (is === 'optik-ders-sil') { b.closest('.optik-ders').remove(); optikSigmaGuncelle(); }
+    else if (is === 'optik-olustur') optikOlustur();
+    else if (is === 'optik-kagit-sil') {
+      const o = optikBul(b.dataset.op); if (!o || !confirm(`${b.dataset.no} numaralı kâğıt bu sınavdan silinsin mi?`)) return;
+      o.kagitlar = o.kagitlar.filter(k => k.no !== b.dataset.no); o.degisti = Date.now();
+      optikYayinla(o); await kaydet(); yonlendir();
+    }
+    else if (is === 'optik-sil') {
+      const o = optikBul(b.dataset.op); if (!o) return;
+      if (!(await sec('Optik sınavı sil', `${h(o.ad)}: cevap anahtarı ve ${o.kagitlar.length} kâğıt silinir, sonuçlar sınavlardan kalkar. Son yedekte durmaya devam eder.`, [{ ad: 'Vazgeç', deger: null, ana: true }, { ad: 'Sil', deger: 1 }]))) return;
+      durum.optik = durum.optik.filter(x => x !== o); durum.sinavlar = durum.sinavlar.filter(s => s.id !== o.id); hayaletTemizle();
+      await kaydet(); location.hash = '#/optik';
+    }
+    else if (is === 'oku-gonder') okumaGonder(Number(b.dataset.kod));
+    else if (is === 'oku-ekle') {
+      const f = okuma.formlar.find(x => x.kod === Number(b.dataset.kod)); if (!f) return;
+      const sorun = okumaSorunlari(f);
+      if (sorun.length && !(await sec('Eklemeden önce', sorun.map(h).join('<br>'), [{ ad: 'Kontrole dön', deger: null, ana: true }, { ad: 'Yine de ekle', deger: 1 }]))) return;
+      let r;
+      try { r = await optikOkumaAl(okumaVerisi(f)); } catch (e) { console.error(e); return bildir('Sınava eklenemedi: ' + (e && e.message)); }
+      if (!r.degisen.length || r.kayitHatasi) return iceAktarmaSonucu(r.html);
+      f.gonderildi = Date.now(); await okumaKaydet();
+      optikRapor = r.html; location.hash = '#/optik/' + encodeURIComponent(r.degisen[0].id);
+    }
+    else if (is === 'oku-temizle') {
+      const f = okuma.formlar.find(x => x.kod === Number(b.dataset.kod)); if (!f) return;
+      if (!(await sec('Listeyi temizle', `${f.kagitlar.length} kâğıdın okuma sonucu bu cihazdan silinsin mi?${f.gonderildi ? '' : '<br><b>Bu liste henüz gönderilmedi ya da sınava eklenmedi.</b>'}`, [{ ad: 'Vazgeç', deger: null, ana: true }, { ad: 'Sil', deger: 1 }]))) return;
+      f.kagitlar.forEach(k => fotolar.delete(k.id));
+      okuma.formlar = okuma.formlar.filter(x => x !== f); await okumaKaydet(); yonlendir();
+    }
+    else if (is === 'kontrol-sec') kontrolSec(b.dataset.id, Number(b.dataset.i), b.dataset.c, b);
+    else if (is === 'kontrol-hepsi') {
+      const x = kagitBul(b.dataset.id); if (!x) return;
+      x.k.supheli.forEach(s => { if (s.alan === 'soru' && s.secim == null) s.secim = x.k.cevaplar[s.ders][s.soru]; });
+      await okumaKaydet(); yonlendir();
+    }
+    else if (is === 'kontrol-kit') {
+      const x = kagitBul(b.dataset.id); if (!x) return;
+      x.k.kitapcik = b.dataset.c; x.k.kitapcikBos = false;
+      x.k.supheli.forEach(s => { if (s.alan === 'kitapcik') s.secim = b.dataset.c; });
+      await okumaKaydet(); yonlendir();
+    }
+    else if (is === 'kontrol-no-onay') {
+      const x = kagitBul(b.dataset.id); if (!x) return;
+      if (!x.k.no) return bildir('Önce numarayı yazın.');
+      x.k.supheli.forEach(s => { if (s.alan === 'no') s.secim = x.k.no; });
+      await okumaKaydet(); yonlendir();
+    }
+    else if (is === 'kontrol-sil') {
+      const x = kagitBul(b.dataset.id); if (!x || !confirm('Bu kâğıdın okuma sonucu silinsin mi?')) return;
+      x.f.kagitlar = x.f.kagitlar.filter(k => k !== x.k);
+      if (!x.f.kagitlar.length) okuma.formlar = okuma.formlar.filter(f => f !== x.f);
+      fotolar.delete(x.k.id); await okumaKaydet(); location.hash = '#/oku';
+    }
   });
 
   document.addEventListener('change', async (ev) => {
@@ -1399,10 +3067,33 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     if (t.dataset.ayar) { durum.ayarlar = { ...ayar(), [t.dataset.ayar]: t.checked }; await kaydet(); yonlendir(); return; }
     if (t.dataset.ayarSec) { durum.ayarlar = { ...ayar(), [t.dataset.ayarSec]: Number(t.value) }; await kaydet(); return; }
     const is = t.dataset.is;
+    if (is === 'oku-dosya') { const fs = [...t.files]; t.value = ''; fotoOku(fs); return; }
+    if (is === 'anahtar') { anahtarDegisti(t); return; }
+    if (is === 'optik-sablon') {
+      $('#optik-dersler').innerHTML = dersSatirlari(Op.SABLONLAR[t.value]);
+      $('#optik-form [name="seviye"]').value = t.value === 'ara' ? '9' : '12';
+      optikSigmaGuncelle(); return;
+    }
+    if (is === 'kontrol-no') {
+      const x = kagitBul(t.dataset.id); if (!x) return;
+      const ham = t.value.replace(/\D/g, '');
+      x.k.no = ham === Op.ANAHTAR_NO ? ham : ham.replace(/^0+(?=\d)/, '');
+      const s = x.k.supheli.find(y => y.alan === 'no');
+      if (x.k.no) { if (s) s.secim = x.k.no; } else if (s) s.secim = null; else x.k.supheli.push({ alan: 'no' });
+      await okumaKaydet(); yonlendir(); return;
+    }
     if (is === 'seviye-sec') sorguYaz({ seviye: t.value });
     else if (is === 'sinif-sec') sorguYaz({ sinif: t.value });
     else if (is === 'ders-sec') sorguYaz({ ders: t.value });
     else if (is === 'ayrinti') sorguYaz({ ayrinti: t.checked ? '1' : '' });
+    else if (is === 'kopya-hepsi') sorguYaz({ hepsi: t.checked ? '1' : '' });
+    else if (is === 'puan-turu' || is === 'tyt-esi') {
+      const sv = sinavBul(t.dataset.sinav); if (!sv) return;
+      const alan = is === 'puan-turu' ? 'puanTuru' : 'tytEsi';
+      if (t.value) sv[alan] = t.value; else delete sv[alan];
+      if (await kaydet()) bildir('Puan ayarı kaydedildi.');
+      yonlendir();
+    }
     else if (is === 'ogr-sinif-sec') sorguYaz({ sinif: t.value });
     else if (is === 'tahta-kisi') sorguYaz({ kisi: t.value });
     else if (is === 'ozet-ders') sorguYaz({ ders: t.value });
@@ -1415,6 +3106,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
   const elleGecersiz = (dd, yy, soru) => !Number.isInteger(dd) || !Number.isInteger(yy) || dd < 0 || yy < 0 || dd + yy > soru;
   document.addEventListener('input', (ev) => {
     const t = ev.target;
+    if (t.closest && t.closest('#optik-form')) optikSigmaGuncelle();
     if (t.dataset.is === 'ogrenci-ara') { clearTimeout(araZaman); araZaman = setTimeout(() => { sorguYaz({ ara: t.value }, true); }, 300); }
     if (t.closest && t.closest('#elle-tablo') && durum.elleTaslak) {
       const tr = t.closest('tr'); const k = durum.elleTaslak.kagitlar[tr.dataset.i];
@@ -1486,6 +3178,8 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     try {
       const kayit = await DB.al('durum');
       if (kayit) durum = { ...M.bosDurum(), ...kayit };
+      const ok = await DB.al('okuma');
+      if (ok && Array.isArray(ok.formlar)) okuma = ok;
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
     } catch (e) {
       ekran().innerHTML = `<div class="bilgi hata"><b>Tarayıcı deposu açılamadı.</b> Gizli pencerede ya da dosyadan açıldıysa veriler saklanamaz. ${h(e.message)}</div>`;
@@ -1498,7 +3192,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
   const taslakYaz = () => { if (durum.elleTaslak) { clearTimeout(elleZaman); DB.koy('durum', durum).catch(() => {}); } };
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') taslakYaz(); });
   window.addEventListener('pagehide', taslakYaz);
-  window.DenemeTakip = { durum: () => durum, dosyaIsle, M };
+  window.DenemeTakip = { durum: () => durum, okuma: () => okuma, dosyaIsle, kontrolSec, M };
   baslat();
 })();
 </script>
