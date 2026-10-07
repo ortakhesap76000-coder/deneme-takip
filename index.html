@@ -80,6 +80,7 @@ th.sirala:hover { color: var(--yazi); }
 .harita td { text-align: center; min-width: 34px; padding: 5px 4px; font-size: 12px; }
 .harita td.sol { text-align: left; }
 .kazanim-ad { max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
+.gecmis .kazanim-ad { max-width: 340px; } .gecmis td:nth-child(n+5), .gecmis th:nth-child(n+5) { text-align: center; }
 .cubuk { display: inline-block; height: 8px; border-radius: 4px; background: var(--vurgu); vertical-align: middle; }
 .cubuk-kap { display: inline-block; width: 90px; height: 8px; background: var(--cizgi); border-radius: 4px; vertical-align: middle; overflow: hidden; }
 .cubuk-kap .cubuk { display: block; height: 100%; }
@@ -188,6 +189,7 @@ select { max-width: 100%; }
     <a href="#/sinavlar" data-kok="sinavlar">Sınavlar</a>
     <a href="#/ogrenciler" data-kok="ogrenciler">Öğrenciler</a>
     <a href="#/konu" data-kok="konu">Konu takibi</a>
+    <a href="#/zorluk" data-kok="zorluk">Zorluk</a>
     <a href="#/elle" data-kok="elle">Elle sonuç</a>
     <a href="#/optik" data-kok="optik">Optik</a>
     <a href="#/veri" data-kok="veri">Veri ve yedek</a>
@@ -367,13 +369,15 @@ select { max-width: 100%; }
     return { ders, kisi: n, disarida, sorular };
   }
 
-  /* Kazanım analizi: her kazanım için soru sayısı, sınıf başarısı ve öğrenci bazlı başarı. */
-  function kazanimAnalizi(hesap, dersId) {
+  /* Kazanım analizi: her kazanım için soru sayısı, sınıf başarısı ve öğrenci bazlı başarı.
+   * grupla(kimlik) verilirse aynı grup anahtarına düşen kazanımlar tek satırda toplanır (ör. öğrenme çıktısı kodu);
+   * bir soru bir gruba bir kez sayılır. */
+  function kazanimAnalizi(hesap, dersId, grupla = null) {
     const sa = soruAnalizi(hesap, dersId);
     if (!sa) return null;
     const kaz = new Map();
     for (const s of sa.sorular) {
-      for (const k of s.kazanim) {
+      for (const k of new Set(grupla ? s.kazanim.map(grupla) : s.kazanim)) {
         if (!kaz.has(k)) kaz.set(k, { kimlik: k, sorular: [], dogru: 0, toplam: 0 });
         const e = kaz.get(k);
         e.sorular.push(s.no);
@@ -388,7 +392,7 @@ select { max-width: 100%; }
         let d = 0, t = 0;
         for (const no of e.sorular) {
           const kabul = anahtar[no - 1];
-          if (kabul === 'X') continue;
+          if (!kabul || kabul === 'X') continue; // anahtar soru sayısından kısaysa
           t++;
           const c = s.kagit.cevap[dersId][no - 1] || '-';
           if (c !== '-' && c !== '*' && kabul.indexOf(c) >= 0) d++;
@@ -399,6 +403,102 @@ select { max-width: 100%; }
     });
     const liste = [...kaz.values()].map(e => ({ ...e, basari: e.toplam ? e.dogru / e.toplam : null }));
     return { ders: sa.ders, kazanimlar: liste, ogrenci };
+  }
+
+  const dogruMu = (c, kabul) => c !== '-' && c !== '*' && kabul.indexOf(c) >= 0;
+  // soruAnalizi ile aynı kural: kazanım ve zorluk A kitapçığının soru sırasıyla
+  const aGrubu = (hesap, dersId) => hesap.satirlar.filter(s => s.dersler[dersId] && (s.kagit.kitapcik || 'A') === 'A' && s.kagit.cevap && s.kagit.cevap[dersId] != null);
+
+  /* Kazanım geçmişi: bir öğrencinin bir dersteki kazanımları sınavlar boyunca.
+   * grupla(kimlik) → anahtar (ör. öğrenme çıktısı kodu); farklı yayınların aynı kodlu kazanımları birleşir,
+   * bir soru bir gruba bir kez sayılır. Yalnız öğrencinin A kitapçığıyla girdiği, o derste kazanımı olan sınavlar.
+   * Her kazanım: sinav[id] = [{no, sonuc: d|y|b}], öğrencinin d/t'si ve aynı sorularda sınava girenlerin doğru oranı. */
+  function kazanimGecmisi(hesaplar, no, dersId, grupla = null) {
+    const ilgili = hesaplar.filter(h => h.sinav.dersler.some(d => d.id === dersId && Array.isArray(d.kazanim) && d.kazanim.some(k => k && k.length)))
+      .sort((a, b) => String(a.sinav.tarih).localeCompare(String(b.sinav.tarih)));
+    const sinavlar = [], kaz = new Map();
+    for (const h of ilgili) {
+      const grup = aGrubu(h, dersId);
+      const s = grup.find(x => String(x.no) === String(no));
+      if (!s) continue;
+      const ders = h.sinav.dersler.find(d => d.id === dersId);
+      const anahtar = dersAnahtari(ders, 'A');
+      sinavlar.push({ id: h.sinav.id, ad: h.sinav.ad, tarih: h.sinav.tarih });
+      for (let i = 0; i < ders.soru; i++) {
+        const kabul = anahtar[i], ks = ders.kazanim[i] || [];
+        if (!kabul || kabul === 'X' || !ks.length) continue;
+        const c = s.kagit.cevap[dersId][i] || '-';
+        const sonuc = c === '-' ? 'b' : dogruMu(c, kabul) ? 'd' : 'y';
+        const gd = grup.filter(x => dogruMu(x.kagit.cevap[dersId][i] || '-', kabul)).length;
+        for (const k of new Set(grupla ? ks.map(grupla) : ks)) {
+          if (!kaz.has(k)) kaz.set(k, { kimlik: k, sinav: {}, d: 0, t: 0, gd: 0, gt: 0 });
+          const e = kaz.get(k);
+          (e.sinav[h.sinav.id] = e.sinav[h.sinav.id] || []).push({ no: i + 1, sonuc });
+          e.t++; if (sonuc === 'd') e.d++;
+          e.gd += gd; e.gt += grup.length;
+        }
+      }
+    }
+    return { sinavlar, kazanimlar: [...kaz.values()].map(e => ({ ...e, basari: e.t ? e.d / e.t : null, grupBasari: e.gt ? e.gd / e.gt : null })) };
+  }
+
+  /* Zorluk profili. Sorunun zorluğu p = o sınava girenlerin (A kitapçığı) doğru oranı; öğrencinin kendi
+   * sorusunda p kendisi çıkarılarak hesaplanır (kendi cevabı zorluğu etkilemesin). enAz kişiden az girilen
+   * ders-sınavlar dışarıda (p oynak olur). Dilimler ZORLUK_DILIM alt sınırlarıyla: çok kolay p ≥ 0,8 … çok zor < 0,2.
+   * Eşik: öğrencinin başarısının %50'nin altına ilk indiği yer; iki dilimin ortalama p'leri arasında doğrusal ara
+   * değerle bulunan p (ör. 0,55 = "sınava girenlerin %55'inin çözdüğü sorulardan itibaren yarıdan azını çözüyor").
+   * Yalnız en az enAzSoru sorulu dilimler kullanılır; durum: ara | ust (hiç inmiyor) | alt (en kolayda da altında) | az. */
+  const ZORLUK_DILIM = [0.8, 0.6, 0.4, 0.2, 0];
+  const dilimBul = (p) => ZORLUK_DILIM.findIndex(a => p >= a);
+  function zorlukEsigi(dilim, enAzSoru = 5) {
+    const n = dilim.filter(x => x.t >= enAzSoru).map(x => ({ p: x.pt / x.t, b: x.d / x.t }));
+    if (n.length < 2) return { esik: null, durum: 'az' };
+    const i = n.findIndex(x => x.b < 0.5);
+    if (i < 0) return { esik: null, durum: 'ust' };
+    if (i === 0) return { esik: null, durum: 'alt' };
+    const a = n[i - 1], b = n[i];
+    return { esik: a.p + (a.b - 0.5) * (b.p - a.p) / (a.b - b.b), durum: 'ara' };
+  }
+  function zorlukProfili(hesaplar, dersId = null, enAz = 8) {
+    enAz = Math.max(2, enAz); // kendisi çıkarılınca en az bir kişi kalsın
+    const bos = () => ZORLUK_DILIM.map(() => ({ d: 0, t: 0, pt: 0 }));
+    const ogr = new Map(), sinavlar = [], sorular = [];
+    for (const h of hesaplar) {
+      let soru = 0, pt = 0;
+      const dagilim = ZORLUK_DILIM.map(() => 0);
+      for (const ders of h.sinav.dersler) {
+        if (dersId && ders.id !== dersId) continue;
+        const grup = aGrubu(h, ders.id), n = grup.length;
+        if (n < enAz) continue;
+        const anahtar = dersAnahtari(ders, 'A');
+        for (let i = 0; i < ders.soru; i++) {
+          const kabul = anahtar[i];
+          if (!kabul || kabul === 'X') continue;
+          const dg = grup.map(x => dogruMu(x.kagit.cevap[ders.id][i] || '-', kabul));
+          const top = dg.filter(Boolean).length, p = top / n;
+          soru++; pt += p; dagilim[dilimBul(p)]++;
+          // en çok işaretlenen yanlış şık: çoğunluk aynı yanlışta buluşuyorsa anahtar hatası olabilir
+          const say = {};
+          grup.forEach((x, j) => { const c = x.kagit.cevap[ders.id][i] || '-'; if (!dg[j] && HARFLER.includes(c)) say[c] = (say[c] || 0) + 1; });
+          const sik = Object.keys(say).sort((a, b) => say[b] - say[a])[0] || null;
+          sorular.push({ sinavId: h.sinav.id, dersId: ders.id, no: i + 1, p, kisi: n, anahtar: kabul, yanlisSik: sik, yanlisN: sik ? say[sik] : 0, kazanim: (ders.kazanim && ders.kazanim[i]) || [] });
+          grup.forEach((x, j) => {
+            const pk = (top - (dg[j] ? 1 : 0)) / (n - 1);
+            const key = String(x.no);
+            if (!ogr.has(key)) ogr.set(key, { no: x.no, sinif: x.sinif, dilim: bos() });
+            const o = ogr.get(key); o.sinif = x.sinif;
+            const e = o.dilim[dilimBul(pk)];
+            e.t++; e.pt += pk; if (dg[j]) e.d++;
+          });
+        }
+      }
+      if (soru) sinavlar.push({ id: h.sinav.id, ad: h.sinav.ad, tarih: h.sinav.tarih, seviye: h.sinav.seviye, soru, ort: pt / soru, dagilim });
+    }
+    const ogrenci = [...ogr.values()].map(o => {
+      const d = o.dilim.reduce((t, x) => t + x.d, 0), t = o.dilim.reduce((s, x) => s + x.t, 0);
+      return { ...o, d, t, basari: t ? d / t : null, ...zorlukEsigi(o.dilim) };
+    });
+    return { dilimler: ZORLUK_DILIM, sinavlar, sorular, ogrenci };
   }
 
   /* Sınavlar arası konu takibi (koçun AKAS konu kodları, ders.konu[soru] = kod).
@@ -855,7 +955,7 @@ select { max-width: 100%; }
     return sorun;
   }
 
-  const Motor = { HARFLER, OSYM, yuvarla, puanla, sirala, dersAnahtari, gecerliSoru, sinavHesapla, soruAnalizi, kazanimAnalizi, konuTakibi, kopyaAnalizi, oncekiSapma, puanTuru, puanTuruTahmin, tytEsiBul, puanHesapla, netDegeri, ogrenciGelisimi, tpDenetle, birlestir, bosDurum, dogrula };
+  const Motor = { HARFLER, OSYM, yuvarla, puanla, sirala, dersAnahtari, gecerliSoru, sinavHesapla, soruAnalizi, kazanimAnalizi, kazanimGecmisi, ZORLUK_DILIM, zorlukEsigi, zorlukProfili, konuTakibi, kopyaAnalizi, oncekiSapma, puanTuru, puanTuruTahmin, tytEsiBul, puanHesapla, netDegeri, ogrenciGelisimi, tpDenetle, birlestir, bosDurum, dogrula };
   if (typeof module !== 'undefined' && module.exports) module.exports = Motor;
   else kok.Motor = Motor;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -1773,7 +1873,7 @@ ${p.join('\n')}
 (function () {
   'use strict';
   const M = window.Motor;
-  const SURUM = 'v1.3 · 7 Ekim 2026';
+  const SURUM = 'v1.4 · 7 Ekim 2026';
   const ESIK = { zayif: 0.5, iyi: 0.67 }; // AKAS paneliyle aynı: < %50 zayıf, ≥ %67 iyi
   const VARSAYILAN_AYAR = { karneSira: true, karnePuan: true, karneKazanim: true, karneSoruDokumu: true, tahtaKisi: 7, tahtaDersler: false };
 
@@ -1794,6 +1894,35 @@ ${p.join('\n')}
   const ogrEtiket = (no) => ogrAd(no) || `No ${no}`;
   const sinavBul = (id) => durum.sinavlar.find(s => s.id === id);
   const kazanimAd = (id) => { const k = durum.kazanimlar.find(x => x.id === id); return k ? k.ad : id; };
+  /* Öğrenme çıktısı grubu: "FİZ.9.1.2. … | ç) …" → anahtar FIZ.9.1.2, etiket "|" öncesi.
+   * Kod biçimleri: FİZ.9.1.2. · TDE9.1. · M.9.1.1.1 - · T.8.1.1: · Kimya 9.1.1. · harfsiz en az üç düzey (9.1.1.).
+   * Kodsuz adda anahtar "|" öncesi metindir. */
+  const KOD_KATLA = { 'İ': 'I', 'Ç': 'C', 'Ğ': 'G', 'Ö': 'O', 'Ş': 'S', 'Ü': 'U' };
+  function kazanimKodu(ad) {
+    const bas = String(ad).split(' | ')[0].trim();
+    // büyük harfli önek (FİZ.9.1.2, TDE9.1, M.9.1.1.1) ya da en az üç parçalı numara (Kimya 9.1.1);
+    // "Sayı 3.5" gibi düz sözcük + ondalık kod sayılmaz. Önekte Türkçe harf katlanır: FİZ = FIZ.
+    const m = bas.match(/^(?:([A-ZÇĞİÖŞÜ]{1,8})\.?\s*(\d+(?:\.\d+)+)|([A-Za-zÇĞİÖŞÜçğıöşü]{1,8})\.?\s*(\d+(?:\.\d+){2,})|(\d+(?:\.\d+){2,}))\.?(?=[\s:\-–—]|[a-zçğıöşü]\)|$)/);
+    const harf = m && (m[1] || m[3]);
+    const anahtar = !m ? bas.toLocaleLowerCase('tr') : harf ? harf.toLocaleUpperCase('tr').replace(/[İÇĞÖŞÜ]/g, c => KOD_KATLA[c]) + '.' + (m[2] || m[4]) : m[5];
+    return { anahtar, etiket: bas };
+  }
+  // idler: yalnız bu dersin kazanımları (etiketler başka sınavların aynı kodlu ifadelerini almasın)
+  function kazanimGruplari(idler) {
+    const kim = new Map(), etiket = new Map();
+    for (const id of new Set(idler)) {
+      const g = kazanimKodu(kazanimAd(id));
+      kim.set(id, g.anahtar);
+      if (!etiket.has(g.anahtar)) etiket.set(g.anahtar, []);
+      if (!etiket.get(g.anahtar).includes(g.etiket)) etiket.get(g.anahtar).push(g.etiket);
+    }
+    // Aynı kod farklı ifadelerle yazılmışsa (eski TestPlus sınavları) ilki ve "+n" görünür, hepsi ipucunda
+    return {
+      grupla: (id) => kim.get(id) || id,
+      etiket: (a) => { const e = etiket.get(a); return !e ? kazanimAd(a) : e[0] + (e.length > 1 ? ` (+${e.length - 1} ifade)` : ''); },
+      ipucu: (a) => { const e = etiket.get(a); return e ? e.join('\n') : kazanimAd(a); },
+    };
+  }
   const kisaKazanim = (ad) => { const k = String(ad).split(' | ')[0].trim(); return k.length > 150 ? k.slice(0, 147).trimEnd() + '…' : k; };
   const dersSoru = (s) => s.dersler.reduce((t, d) => t + d.soru, 0);
 
@@ -2320,25 +2449,32 @@ ${p.join('\n')}
 
   function sekmeKazanimlar(s, x, sorgu) {
     const dersId = sorgu.ders || s.dersler[0].id;
-    const k = M.kazanimAnalizi(x, dersId);
+    const kodlu = sorgu.kaz === 'kod';
+    const dersK = (s.dersler.find(d => d.id === dersId) || {}).kazanim || [];
+    const G = kazanimGruplari(dersK.flat());
+    const k = M.kazanimAnalizi(x, dersId, kodlu ? G.grupla : null);
     if (!k) return '<p>Ders bulunamadı.</p>';
-    let html = `<div class="satir ayrik" style="margin:8px 0">${dersSecici(s, dersId)}${sinifSecici(x, sorgu.sinif || '')}</div>`;
+    const ad = kodlu ? G.etiket : kazanimAd, ipucu = kodlu ? G.ipucu : kazanimAd;
+    // seçenek yalnız toplanacak bir şey varsa (aynı koda düşen iki alt madde) görünür
+    const toplanir = kodlu || new Set(k.kazanimlar.map(e => G.grupla(e.kimlik))).size < k.kazanimlar.length;
+    const gosterim = toplanir ? `<span><label class="alt">Gösterim</label> <select data-is="kaz-gosterim"><option value="">Her alt madde ayrı</option><option value="kod" ${kodlu ? 'selected' : ''}>Öğrenme çıktısına göre (kod)</option></select></span>` : '';
+    let html = `<div class="satir ayrik" style="margin:8px 0"><span class="satir">${dersSecici(s, dersId)}${gosterim}</span>${sinifSecici(x, sorgu.sinif || '')}</div>`;
     if (!k.kazanimlar.length) return html + `<div class="bilgi">Bu derste sorulara kazanım atanmamış. ${s.optik && optikBul(s.id) ? `Kazanım Excel’ini <a href="#/optik/${encodeURIComponent(s.id)}">optik sınav sayfasından</a> yükleyin.` : 'TestPlus’ta kazanım Excel’i yüklenmiş sınavlarda görünür.'}</div>`;
     const liste = k.kazanimlar.slice().sort((a, b) => (a.basari ?? 1) - (b.basari ?? 1));
-    html += `<h2>Kapsam ve sınıf başarısı</h2><div class="tablo-kap"><table><thead><tr><th class="sol">Kazanım</th><th>Soru</th><th class="sirala">Başarı</th></tr></thead><tbody>`;
+    html += `<h2>Kapsam ve sınıf başarısı</h2>${kodlu ? '<p class="alt">Aynı koddaki alt maddeler (a, b, ç…) tek satırda toplandı. Başarı, bu soruların hepsindeki doğru oranıdır; bir soru iki alt maddeye bağlıysa bir kez sayılır.</p>' : ''}<div class="tablo-kap"><table><thead><tr><th class="sol">Kazanım</th><th>Soru</th><th class="sirala">Başarı</th></tr></thead><tbody>`;
     liste.forEach(e => {
-      html += `<tr><td class="sol kazanim-ad" title="${h(kazanimAd(e.kimlik))}">${h(kazanimAd(e.kimlik))}</td><td title="soru numaraları">${araliklar(e.sorular)}</td><td data-d="${e.basari == null ? -1 : e.basari}"><span class="cubuk-kap"><span class="cubuk" style="width:${(e.basari || 0) * 100}%"></span></span> <b class="${renkSinif(e.basari)}">${yuzde(e.basari)}</b></td></tr>`;
+      html += `<tr><td class="sol kazanim-ad" title="${h(ipucu(e.kimlik))}">${h(ad(e.kimlik))}</td><td title="soru numaraları">${araliklar(e.sorular)}</td><td data-d="${e.basari == null ? -1 : e.basari}"><span class="cubuk-kap"><span class="cubuk" style="width:${(e.basari || 0) * 100}%"></span></span> <b class="${renkSinif(e.basari)}">${yuzde(e.basari)}</b></td></tr>`;
     });
     html += '</tbody></table></div>';
     const sinif = sorgu.sinif || '';
     const ogr = k.ogrenci.filter(o => !sinif || o.sinif === sinif).sort((a, b) => String(a.no).localeCompare(String(b.no), 'tr', { numeric: true }));
     html += `<h2>Öğrenci × kazanım ısı haritası</h2><p class="alt">Satır: öğrenci. Sütun: yukarıdaki listedeki sırayla kazanım (en zayıftan güçlüye). Hücre: o kazanımın sorularındaki doğru oranı. Üzerine gelince kazanım adı görünür.</p>`;
-    html += `<div class="tablo-kap"><table class="harita"><thead><tr><th class="sol">Öğrenci</th>${liste.map((e, i) => `<th title="${h(kazanimAd(e.kimlik))}">${i + 1}</th>`).join('')}<th>Ort.</th></tr></thead><tbody>`;
+    html += `<div class="tablo-kap"><table class="harita"><thead><tr><th class="sol">Öğrenci</th>${liste.map((e, i) => `<th title="${h(ipucu(e.kimlik))}">${i + 1}</th>`).join('')}<th>Ort.</th></tr></thead><tbody>`;
     ogr.forEach(o => {
       const degerler = liste.map(e => o.basari[e.kimlik]);
       const gecerli = degerler.filter(v => v != null);
       const ort = gecerli.length ? gecerli.reduce((a, b) => a + b, 0) / gecerli.length : null;
-      html += `<tr class="tik" data-git="#/ogrenci/${encodeURIComponent(o.no)}"><td class="sol">${h(ogrEtiket(o.no))}</td>${degerler.map((v, i) => `<td class="z-${renkSinif(v)}" title="${h(kazanimAd(liste[i].kimlik))}">${v == null ? '' : Math.round(v * 100)}</td>`).join('')}<td><b>${ort == null ? '' : Math.round(ort * 100)}</b></td></tr>`;
+      html += `<tr class="tik" data-git="#/ogrenci/${encodeURIComponent(o.no)}"><td class="sol">${h(ogrEtiket(o.no))}</td>${degerler.map((v, i) => `<td class="z-${renkSinif(v)}" title="${h(ipucu(liste[i].kimlik))}">${v == null ? '' : Math.round(v * 100)}</td>`).join('')}<td><b>${ort == null ? '' : Math.round(ort * 100)}</b></td></tr>`;
     });
     html += '</tbody></table></div>';
     return html;
@@ -2441,8 +2577,8 @@ ${p.join('\n')}
     sinavlar.forEach(s => s.dersler.forEach(d => { if (Array.isArray(d.konu) && !dersler.some(x => x.id === d.id)) dersler.push({ id: d.id, ad: d.ad }); }));
     const dersId = dersler.some(d => d.id === sorgu.ders) ? sorgu.ders : (dersler[0] || {}).id;
     const t = dersId ? M.konuTakibi(sinavlar.map(hesap), dersId) : { sinavlar: [], konular: [], ogrenci: [] };
-    const sinif = sorgu.sinif || '';
     const siniflar = [...new Set(t.ogrenci.map(o => o.sinif).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
+    const sinif = siniflar.includes(sorgu.sinif) ? sorgu.sinif : '';
     html += `<div class="satir"><select data-is="seviye-sec">${sevler.map(v => `<option value="${v}" ${v === sev ? 'selected' : ''}>${v}. sınıf</option>`).join('')}</select>
       <select data-is="ders-sec">${dersler.map(d => `<option value="${h(d.id)}" ${d.id === dersId ? 'selected' : ''}>${h(d.ad)}</option>`).join('')}</select>
       ${siniflar.length > 1 ? `<select data-is="sinif-sec"><option value="">Bütün sınıflar</option>${siniflar.map(v => `<option ${v === sinif ? 'selected' : ''}>${h(v)}</option>`).join('')}</select>` : ''}</div></div>`;
@@ -2491,7 +2627,7 @@ ${p.join('\n')}
     return html;
   }
 
-  function gorOgrenci(no) {
+  function gorOgrenci(no, sorgu = {}) {
     const o = ogrenci(no);
     if (!o) return '<p>Öğrenci bulunamadı. <a href="#/ogrenciler">Öğrencilere dön</a></p>';
     const g = M.ogrenciGelisimi(tumHesaplar(), no);
@@ -2512,6 +2648,127 @@ ${p.join('\n')}
       html += `<td class="vurgu">${sayi(x.toplam)}</td><td>${sayi(x.t, 1)}</td><td style="white-space:nowrap">${P && puanYazi(P, pv) || '–'}</td><td>${sayi(x.sinifOrt)}</td><td>${x.sira} / ${x.kisi}</td><td>${x.sinifSira} / ${x.sinifKisi}</td><td><a href="#/karne/${encodeURIComponent(x.sinavId)}/${encodeURIComponent(no)}">karne</a></td></tr>`;
     });
     html += '</tbody></table></div><p class="alt">Yeşil: sınıf ortalamasının üstünde ya da eşit; kırmızı: altında.</p>';
+    const hs = tumHesaplar().filter(x => g.some(z => z.sinavId === x.sinav.id));
+    html += ogrenciZorluk(hs, no, sorgu) + ogrenciKazanimGecmisi(hs, no, sorgu);
+    return html;
+  }
+
+  /* ---------- zorluk ---------- */
+  const DILIM_AD = ['Çok kolay', 'Kolay', 'Orta', 'Zor', 'Çok zor'];
+  const DILIM_ARALIK = ['%80 ve üstü', '%60–79', '%40–59', '%20–39', '%20 altı'];
+  const dilimAdi = (p) => DILIM_AD[M.ZORLUK_DILIM.findIndex(a => p >= a)];
+  function esikKisa(o) {
+    if (o.durum === 'ara') return `%${Math.round(o.esik * 100)} <span class="alt">${dilimAdi(o.esik).toLocaleLowerCase('tr')}</span>`;
+    return { ust: 'inmiyor', alt: 'en kolayda', az: '<span class="alt">veri az</span>' }[o.durum];
+  }
+  function esikCumle(o) {
+    if (o.durum === 'ara') return `Sınava girenlerin yaklaşık <b>%${Math.round(o.esik * 100)}</b>’inin çözebildiği sorulardan daha zor sorularda başarısı %50’nin altına iniyor (${dilimAdi(o.esik).toLocaleLowerCase('tr')} dilim).`;
+    return { ust: 'Hesaba giren en zor dilimde bile soruların yarısından fazlasını çözüyor.', alt: 'Hesaba giren en kolay dilimde bile soruların yarısından azını çözüyor.', az: 'Eşik için en az iki dilimde beşer soru gerekir; henüz veri az.' }[o.durum];
+  }
+  // sıralama değeri: en kolayda düşen en üstte, hiç düşmeyen en altta
+  const anahtarSuphe = (q) => q.kisi >= 15 && q.yanlisN >= q.kisi / 2; // küçük grupta tesadüf olabilir
+  const esikSira = (o) => ({ alt: 2, ara: o.esik, ust: -1, az: -2 }[o.durum]);
+  const ZORLUK_ACIKLAMA = 'Bir sorunun zorluğu, o sınava girenlerin (A kitapçığı) o soruyu çözme oranıdır; öğrencinin kendi cevabı bu orana katılmaz. 8 kişiden az girilen dersler hesaba girmez. Boş bırakılan soru çözülmemiş sayılır.';
+
+  function ogrenciZorluk(hs, no, sorgu) {
+    const dersler = [];
+    hs.forEach(x => x.sinav.dersler.forEach(d => { if (!d.elle && !dersler.some(z => z.id === d.id)) dersler.push({ id: d.id, ad: d.ad }); }));
+    const dersId = dersler.some(d => d.id === sorgu.zders) ? sorgu.zders : '';
+    const z = M.zorlukProfili(hs, dersId || null);
+    const o = z.ogrenci.find(x => String(x.no) === String(no));
+    let html = `<div class="kart"><div class="satir ayrik"><b>Zorluk profili</b><span><label class="alt">Ders</label> <select data-is="z-ders"><option value="">Bütün dersler</option>${dersler.map(d => `<option value="${h(d.id)}" ${d.id === dersId ? 'selected' : ''}>${h(d.ad)}</option>`).join('')}</select></span></div>`;
+    if (!o || !o.t) return html + '<p class="alt">Bu öğrencinin girdiği sınavlarda zorluk hesaplanacak kadar kâğıt yok.</p></div>';
+    html += `<p>${esikCumle(o)}</p><div class="tablo-kap"><table><thead><tr><th class="sol">Dilim</th><th title="sınava girenlerin çözme oranı">Sorunun çözülme oranı</th><th>Soru</th><th>Doğru</th><th class="sol">Öğrencinin başarısı</th><th title="aynı sorularda sınava girenlerin ortalaması">Ortalama öğrenci</th></tr></thead><tbody>`;
+    o.dilim.forEach((x, i) => {
+      if (!x.t) return;
+      const b = x.d / x.t, ort = x.pt / x.t;
+      html += `<tr><td class="sol">${DILIM_AD[i]}</td><td>${DILIM_ARALIK[i]}</td><td>${x.t}</td><td>${x.d}</td><td class="sol"><span class="cubuk-kap"><span class="cubuk" style="width:${b * 100}%"></span></span> <b class="${renkSinif(b)}">${yuzde(b)}</b></td><td>${yuzde(ort)}</td></tr>`;
+    });
+    html += `</tbody></table></div><p class="alt">${ZORLUK_ACIKLAMA} “Ortalama öğrenci”, aynı soruların sınava girenlerce çözülme oranıdır; öğrencinin başarısı bunun üstündeyse o dilimde grubun önündedir. Bütün öğrencilerin karşılaştırması <a href="#/zorluk">Zorluk</a> sayfasında.</p></div>`;
+    return html;
+  }
+
+  function ogrenciKazanimGecmisi(hs, no, sorgu) {
+    const dersler = [];
+    hs.forEach(x => x.sinav.dersler.forEach(d => { if (Array.isArray(d.kazanim) && d.kazanim.some(k => k && k.length) && !dersler.some(z => z.id === d.id)) dersler.push({ id: d.id, ad: d.ad }); }));
+    let html = `<div class="kart"><b>Kazanım geçmişi</b>`;
+    if (!dersler.length) return html + '<p class="alt">Bu öğrencinin girdiği sınavlarda kazanım yüklenmiş ders yok.</p></div>';
+    const dersId = dersler.some(d => d.id === sorgu.kders) ? sorgu.kders : dersler[0].id;
+    const kodlu = sorgu.kaz !== 'ayri';
+    const G = kazanimGruplari(hs.flatMap(x => x.sinav.dersler.filter(d => d.id === dersId).flatMap(d => (d.kazanim || []).flat())));
+    const k = M.kazanimGecmisi(hs, no, dersId, kodlu ? G.grupla : null);
+    const ad = kodlu ? G.etiket : kazanimAd, ipucu = kodlu ? G.ipucu : kazanimAd;
+    const zayifMi = sorgu.kf === 'zayif';
+    const liste = k.kazanimlar.filter(e => !zayifMi || (e.basari != null && e.basari < ESIK.zayif))
+      .sort((a, b) => (a.basari ?? 2) - (b.basari ?? 2) || (b.grupBasari ?? 0) - (a.grupBasari ?? 0));
+    html += ` <div class="satir" style="margin:6px 0"><span><label class="alt">Ders</label> <select data-is="k-ders">${dersler.map(d => `<option value="${h(d.id)}" ${d.id === dersId ? 'selected' : ''}>${h(d.ad)}</option>`).join('')}</select></span>
+      <span><label class="alt">Gösterim</label> <select data-is="kaz-gosterim"><option value="">Öğrenme çıktısına göre (kod)</option><option value="ayri" ${kodlu ? '' : 'selected'}>Her alt madde ayrı</option></select></span>
+      <span><select data-is="k-filtre"><option value="">Bütün kazanımlar</option><option value="zayif" ${zayifMi ? 'selected' : ''}>Yalnız %50 altı</option></select></span></div>`;
+    if (!k.sinavlar.length) return html + '<p class="alt">Bu derste öğrencinin A kitapçığıyla girdiği kazanımlı sınav yok.</p></div>';
+    const tekrar = k.kazanimlar.filter(e => Object.keys(e.sinav).length > 1).length;
+    html += `<p class="alt">${k.kazanimlar.length} kazanım, ${k.sinavlar.length} sınav; ${tekrar} kazanım birden çok sınavda soruldu. Tarih sütunları: o sınavdaki soruları, ✓ doğru · ✗ yanlış · ○ boş (dörtten çok soruda doğru/soru); üzerine gelince soru numaraları görünür.</p>`;
+    html += `<div class="tablo-kap"><table class="gecmis"><thead><tr><th class="sol sirala">Kazanım</th><th class="sirala">Doğru</th><th class="sirala">Başarı</th><th class="sirala" title="aynı sorularda sınava girenlerin doğru oranı">Sınava girenler</th>${k.sinavlar.map(s => `<th title="${h(s.ad)}">${h(kisaTarih(s.tarih))}</th>`).join('')}</tr></thead><tbody>`;
+    const IS = { d: '✓', y: '✗', b: '○' }, AD = { d: 'doğru', y: 'yanlış', b: 'boş' };
+    liste.forEach(e => {
+      html += `<tr><td class="sol kazanim-ad" title="${h(ipucu(e.kimlik))}">${h(ad(e.kimlik))}</td><td data-d="${e.t ? e.d / e.t : -1}">${e.d}/${e.t}</td><td data-d="${e.basari ?? -1}"><b class="${renkSinif(e.basari)}">${yuzde(e.basari)}</b></td><td data-d="${e.grupBasari ?? -1}">${yuzde(e.grupBasari)}</td>`;
+      k.sinavlar.forEach(s => {
+        const q = e.sinav[s.id];
+        if (!q) { html += '<td></td>'; return; }
+        const d = q.filter(x => x.sonuc === 'd').length;
+        html += `<td class="z-${renkSinif(d / q.length)}" title="${h(s.ad + ': ' + q.map(x => `soru ${x.no} ${AD[x.sonuc]}`).join(' · '))}">${q.length <= 4 ? q.map(x => IS[x.sonuc]).join('') : `${d}/${q.length}`}</td>`;
+      });
+      html += '</tr>';
+    });
+    if (!liste.length) html += `<tr><td class="sol alt" colspan="${k.sinavlar.length + 4}">%50 altında kazanım yok.</td></tr>`;
+    html += `</tbody></table></div><p class="alt">${kodlu ? 'Aynı koddaki kazanımlar (alt maddeler ve farklı yayınların aynı kodlu kazanımları) tek satırda toplanır. Kod yazımı farklıysa (ör. eski müfredatın M.9.1.2.1’i ile yeni MAT.9.1.2) ayrı satırda kalır.' : 'Her kazanım metni ayrı satırda; yalnız birebir aynı metin sınavlar arasında birleşir.'} Yalnız A kitapçığıyla girilen sınavlar sayılır.</p></div>`;
+    return html;
+  }
+
+  function gorZorluk(sorgu) {
+    if (!durum.sinavlar.length) return bosEkran();
+    const sevler = [...new Set(durum.sinavlar.map(s => s.seviye).filter(Boolean))].sort((a, b) => a - b);
+    const sev = sevler.includes(Number(sorgu.seviye)) ? Number(sorgu.seviye) : (sevler.length ? sevler[sevler.length - 1] : null);
+    const sinavlar = durum.sinavlar.filter(s => sev == null || s.seviye === sev);
+    const dersler = [];
+    sinavlar.forEach(s => s.dersler.forEach(d => { if (!d.elle && !dersler.some(x => x.id === d.id)) dersler.push({ id: d.id, ad: d.ad }); }));
+    const dersId = dersler.some(d => d.id === sorgu.ders) ? sorgu.ders : '';
+    const z = M.zorlukProfili(sinavlar.map(hesap), dersId || null);
+    const siniflar = [...new Set(z.ogrenci.map(o => o.sinif).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
+    const sinif = siniflar.includes(sorgu.sinif) ? sorgu.sinif : '';
+    let html = `<div class="satir ayrik"><div><h1>Zorluk</h1><div class="alt">Soruların zorluğu ve her öğrencinin başarısının düştüğü eşik · ${sinavlar.length} sınav</div></div>
+      <div class="satir">${sevler.length ? `<select data-is="seviye-sec">${sevler.map(v => `<option value="${v}" ${v === sev ? 'selected' : ''}>${v}. sınıf</option>`).join('')}</select>` : ''}
+      <select data-is="ders-sec"><option value="">Bütün dersler</option>${dersler.map(d => `<option value="${h(d.id)}" ${d.id === dersId ? 'selected' : ''}>${h(d.ad)}</option>`).join('')}</select>
+      ${siniflar.length > 1 ? `<select data-is="sinif-sec"><option value="">Bütün sınıflar</option>${siniflar.map(v => `<option ${v === sinif ? 'selected' : ''}>${h(v)}</option>`).join('')}</select>` : ''}</div></div>`;
+    if (!z.ogrenci.length) return html + '<div class="bilgi">Zorluk hesaplanacak kadar kâğıt yok (bir derse en az 8 kişi girmeli).</div>';
+    html += `<p class="alt">${ZORLUK_ACIKLAMA} Dilimler: ${DILIM_AD.map((a, i) => `${a.toLocaleLowerCase('tr')} ${DILIM_ARALIK[i]}`).join(' · ')}. Eşik: öğrencinin başarısının %50’nin altına indiği çözülme oranı (yalnız en az beş sorulu dilimler); düşük eşik, daha zor sorulara kadar dayandığını gösterir.</p>`;
+
+    // öğrenciler
+    const ogr = z.ogrenci.filter(o => !sinif || o.sinif === sinif).sort((a, b) => esikSira(b) - esikSira(a) || String(a.no).localeCompare(String(b.no), 'tr', { numeric: true }));
+    const cok = siniflar.length > 1;
+    html += `<h2>Öğrenciler</h2><div class="tablo-kap"><table><thead><tr><th class="sol sirala">Öğrenci</th>${cok ? '<th class="sol sirala">Sınıf</th>' : ''}${DILIM_AD.map((a, i) => `<th class="sirala" title="çözülme oranı ${DILIM_ARALIK[i]}">${a}</th>`).join('')}<th class="sirala">Toplam</th><th class="sirala" title="başarının %50’nin altına indiği çözülme oranı">Eşik</th></tr></thead><tbody>`;
+    const ort = M.ZORLUK_DILIM.map(() => ({ d: 0, t: 0, pt: 0 }));
+    ogr.forEach(o => {
+      o.dilim.forEach((x, i) => { ort[i].d += x.d; ort[i].t += x.t; ort[i].pt += x.pt; });
+      html += `<tr class="tik" data-git="#/ogrenci/${encodeURIComponent(o.no)}"><td class="sol">${h(ogrEtiket(o.no))}</td>${cok ? `<td class="sol">${h(o.sinif || '')}</td>` : ''}${o.dilim.map(x => { const b = x.t ? x.d / x.t : null; return `<td class="z-${renkSinif(b)}" data-d="${b ?? -1}" title="${x.d}/${x.t}">${b == null ? '' : Math.round(b * 100)}</td>`; }).join('')}<td data-d="${o.basari ?? -1}">${yuzde(o.basari)}</td><td data-d="${esikSira(o)}" style="white-space:nowrap">${esikKisa(o)}</td></tr>`;
+    });
+    html += `</tbody><tfoot><tr><td class="sol"><b>Ortalama</b></td>${cok ? '<td></td>' : ''}${ort.map(x => `<td><b>${x.t ? Math.round(x.d / x.t * 100) : ''}</b></td>`).join('')}<td></td><td></td></tr></tfoot></table></div><p class="alt">Hücre: o dilimdeki sorulardan çözdüğü oran (%). Satıra tıklayınca öğrencinin sayfası açılır. Eşik sütununda “inmiyor”: hesaba giren en zor dilimde bile yarıdan fazlası; “en kolayda”: en kolay dilimde bile yarıdan azı.</p>`;
+
+    // denemeler
+    html += `<h2>Denemeler, zordan kolaya</h2><div class="tablo-kap"><table><thead><tr><th class="sol">Sınav</th><th class="sol">Tarih</th><th>Soru</th><th class="sirala">Ortalama çözülme</th>${DILIM_AD.map(a => `<th title="bu dilimdeki soru sayısı">${a}</th>`).join('')}</tr></thead><tbody>`;
+    z.sinavlar.slice().sort((a, b) => a.ort - b.ort).forEach(s => {
+      html += `<tr><td class="sol"><a href="#/sinav/${encodeURIComponent(s.id)}/sorular">${h(s.ad)}</a></td><td class="sol">${tarihYaz(s.tarih)}</td><td>${s.soru}</td><td data-d="${s.ort}"><span class="cubuk-kap"><span class="cubuk" style="width:${s.ort * 100}%"></span></span> ${yuzde(s.ort)}</td>${s.dagilim.map(n => `<td>${n || ''}</td>`).join('')}</tr>`;
+    });
+    html += '</tbody></table></div><p class="alt">Ortalama çözülme: soruların sınava girenlerce çözülme oranlarının ortalaması. Aynı öğrenciler zamanla ilerlediği için sonraki bir deneme biraz kolay görünebilir; farklı sınıf düzeyleri karşılaştırılmaz.</p>';
+
+    // en zor sorular
+    const zor = z.sorular.slice().sort((a, b) => a.p - b.p || b.kisi - a.kisi).slice(0, 15);
+    html += `<h2>En zor 15 soru</h2><div class="tablo-kap"><table><thead><tr><th class="sol">Sınav</th><th class="sol">Ders</th><th>Soru</th><th>Anahtar</th><th>Çözen</th><th title="en çok işaretlenen yanlış şık">Çoğunluğun yanlışı</th><th class="sol">Kazanım</th></tr></thead><tbody>`;
+    let suphe = 0;
+    zor.forEach(q => {
+      const s = sinavBul(q.sinavId), d = s && s.dersler.find(x => x.id === q.dersId);
+      html += `<tr><td class="sol"><a href="#/sinav/${encodeURIComponent(q.sinavId)}/sorular?ders=${encodeURIComponent(q.dersId)}">${h(s ? s.ad : q.sinavId)}</a></td><td class="sol">${h(d ? d.ad : q.dersId)}</td><td>${q.no}</td><td>${h(q.anahtar)}</td><td>${yuzde(q.p)} <span class="alt">(${Math.round(q.p * q.kisi)}/${q.kisi})</span></td><td>${q.yanlisSik ? `${q.yanlisSik} <span class="alt">(${q.yanlisN}/${q.kisi})</span>${anahtarSuphe(q) ? (suphe++, ' <b class="zayif" title="Çoğunluk aynı yanlış şıkta buluştu; cevap anahtarını kontrol edin.">⚠</b>') : ''}` : '–'}</td><td class="sol kazanim-ad" title="${h(q.kazanim.map(kazanimAd).join('\n'))}">${q.kazanim.length ? h(kisaKazanim(kazanimAd(q.kazanim[0]))) : '<span class="alt">–</span>'}</td></tr>`;
+    });
+    html += `</tbody></table></div><p class="alt">Soru numaraları A kitapçığına göredir.${suphe ? ' ⚠: sınava girenlerin yarısı ya da daha fazlası aynı yanlış şıkkı işaretlemiş. Bu, cevap anahtarı hatası da olabilir; kitapçıktan kontrol edin, gerekirse anahtarı düzeltin.' : ''}</p>`;
     return html;
   }
 
@@ -3136,7 +3393,8 @@ ${p.join('\n')}
       else if (kok === 'ogrenciler') html = gorOgrenciler(sorgu);
       else if (kok === 'ozet') html = gorOzet(sorgu);
       else if (kok === 'konu') html = gorKonu(sorgu);
-      else if (kok === 'ogrenci') html = gorOgrenci(parca[1]);
+      else if (kok === 'ogrenci') html = gorOgrenci(parca[1], sorgu);
+      else if (kok === 'zorluk') html = gorZorluk(sorgu);
       else if (kok === 'karne') html = gorKarne(parca[1], parca[2] || 'hepsi', sorgu);
       else if (kok === 'tahta') html = gorTahta(parca[1], sorgu);
       else if (kok === 'elle') html = gorElle(sorgu);
@@ -3292,6 +3550,10 @@ ${p.join('\n')}
     if (is === 'seviye-sec') sorguYaz({ seviye: t.value });
     else if (is === 'sinif-sec') sorguYaz({ sinif: t.value });
     else if (is === 'ders-sec') sorguYaz({ ders: t.value });
+    else if (is === 'kaz-gosterim') sorguYaz({ kaz: t.value });
+    else if (is === 'z-ders') sorguYaz({ zders: t.value });
+    else if (is === 'k-ders') sorguYaz({ kders: t.value });
+    else if (is === 'k-filtre') sorguYaz({ kf: t.value });
     else if (is === 'ayrinti') sorguYaz({ ayrinti: t.checked ? '1' : '' });
     else if (is === 'kopya-hepsi') sorguYaz({ hepsi: t.checked ? '1' : '' });
     else if (is === 'puan-turu' || is === 'tyt-esi') {
