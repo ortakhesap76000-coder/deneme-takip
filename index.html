@@ -1,0 +1,1505 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2759c4">
+<title>Deneme Takip</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232759c4'/%3E%3Cpath d='M8 22l5-6 4 3 7-9' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>:root {
+  --zemin: #f6f7f9; --kart: #ffffff; --yazi: #1d2330; --soluk: #5d6677; --cizgi: #dfe3ea;
+  --vurgu: #2759c4; --vurgu-acik: #e7eefc; --iyi: #1f8a4c; --orta: #b7791f; --zayif: #c53030;
+  --iyi-z: #e3f4ea; --orta-z: #fbf0dc; --zayif-z: #fbe5e5; --golge: 0 1px 2px rgba(20, 30, 50, .06), 0 2px 8px rgba(20, 30, 50, .05);
+  --r: 10px; color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="acik"]) {
+    --zemin: #12151b; --kart: #1b2029; --yazi: #e7eaf0; --soluk: #9aa3b5; --cizgi: #2c3340;
+    --vurgu: #7aa2ff; --vurgu-acik: #1f2a44; --iyi: #4cc38a; --orta: #e3a948; --zayif: #f07171;
+    --iyi-z: #173326; --orta-z: #3a2e17; --zayif-z: #3b1d1d; --golge: none; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--zemin); color: var(--yazi); font: 15px/1.45 system-ui, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--vurgu); }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; border: 1px solid var(--cizgi); background: var(--kart); border-radius: 8px; padding: 7px 12px; }
+button:hover { border-color: var(--vurgu); }
+button.ana { background: var(--vurgu); color: #fff; border-color: var(--vurgu); }
+@media (prefers-color-scheme: dark) { :root:not([data-tema="acik"]) button.ana { color: #0b1020; } }
+button.ana:hover { filter: brightness(1.08); }
+button:disabled { opacity: .5; cursor: default; }
+select, input[type=text], input[type=number], input[type=date] { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 8px; padding: 6px 8px; }
+input[type=number] { width: 4.2em; }
+
+header.ust { position: sticky; top: 0; z-index: 5; background: var(--kart); border-bottom: 1px solid var(--cizgi); display: flex; align-items: center; gap: 4px; padding: 0 16px; overflow-x: auto; }
+header.ust .marka { font-weight: 700; margin-right: 12px; white-space: nowrap; }
+header.ust nav { display: flex; }
+header.ust nav a { display: inline-block; padding: 14px 10px; text-decoration: none; color: var(--soluk); border-bottom: 2px solid transparent; white-space: nowrap; }
+header.ust nav a.secili { color: var(--yazi); border-bottom-color: var(--vurgu); }
+header.ust .bosluk { flex: 1; }
+header.ust .surum { color: var(--soluk); font-size: 12px; white-space: nowrap; }
+
+main { max-width: 1180px; margin: 0 auto; padding: 18px 16px 60px; }
+h1 { font-size: 22px; margin: 4px 0 4px; }
+h2 { font-size: 17px; margin: 22px 0 10px; }
+.alt { color: var(--soluk); font-size: 13px; }
+.kart { background: var(--kart); border: 1px solid var(--cizgi); border-radius: var(--r); box-shadow: var(--golge); padding: 14px 16px; margin: 12px 0; }
+.satir { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ayrik { justify-content: space-between; }
+.izgara { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.ozet { background: var(--kart); border: 1px solid var(--cizgi); border-radius: var(--r); padding: 12px 14px; }
+.ozet b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+.ozet span { color: var(--soluk); font-size: 13px; }
+
+.sekmeler { display: flex; gap: 4px; border-bottom: 1px solid var(--cizgi); margin: 14px 0 8px; overflow-x: auto; }
+.sekmeler a { padding: 9px 12px; text-decoration: none; color: var(--soluk); border-bottom: 2px solid transparent; white-space: nowrap; }
+.sekmeler a.secili { color: var(--yazi); border-bottom-color: var(--vurgu); }
+
+.tablo-kap { overflow-x: auto; border: 1px solid var(--cizgi); border-radius: var(--r); background: var(--kart); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 9px; border-bottom: 1px solid var(--cizgi); text-align: right; white-space: nowrap; }
+th { font-size: 12px; color: var(--soluk); font-weight: 600; background: var(--kart); position: sticky; top: 0; }
+th.sol, td.sol { text-align: left; }
+tbody tr:hover { background: var(--vurgu-acik); }
+tbody tr.tik { cursor: pointer; }
+tr:last-child td { border-bottom: 0; }
+td.vurgu { font-weight: 700; }
+th.sirala { cursor: pointer; user-select: none; }
+th.sirala:hover { color: var(--yazi); }
+.iyi { color: var(--iyi); } .orta { color: var(--orta); } .zayif { color: var(--zayif); }
+.z-iyi { background: var(--iyi-z); } .z-orta { background: var(--orta-z); } .z-zayif { background: var(--zayif-z); }
+.rozet { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 12px; background: var(--vurgu-acik); color: var(--vurgu); }
+.rozet.uyari { background: var(--orta-z); color: var(--orta); }
+.bilgi { padding: 10px 14px; border-radius: var(--r); background: var(--vurgu-acik); margin: 10px 0; }
+.bilgi.uyari { background: var(--orta-z); }
+.bilgi.hata { background: var(--zayif-z); }
+.bos-durum { text-align: center; padding: 50px 16px; color: var(--soluk); }
+.bos-durum h1 { color: var(--yazi); }
+.harita td { text-align: center; min-width: 34px; padding: 5px 4px; font-size: 12px; }
+.harita td.sol { text-align: left; }
+.kazanim-ad { max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
+.cubuk { display: inline-block; height: 8px; border-radius: 4px; background: var(--vurgu); vertical-align: middle; }
+.cubuk-kap { display: inline-block; width: 90px; height: 8px; background: var(--cizgi); border-radius: 4px; vertical-align: middle; overflow: hidden; }
+.cubuk-kap .cubuk { display: block; height: 100%; }
+tbody tr.tik:focus-visible { outline: 2px solid var(--vurgu); outline-offset: -2px; }
+dialog.secim { border: 1px solid var(--cizgi); border-radius: var(--r); background: var(--kart); color: var(--yazi); max-width: 480px; padding: 18px 20px; }
+dialog.secim::backdrop { background: rgba(0, 0, 0, .35); }
+dialog.secim h2 { margin-top: 0; }
+svg.grafik { width: 100%; height: auto; display: block; }
+svg.grafik text { fill: var(--soluk); font-size: 11px; }
+.gizli { display: none !important; }
+.yedek-serit { background: var(--orta-z); color: var(--yazi); padding: 8px 16px; display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; font-size: 14px; }
+.surukle { border: 2px dashed var(--cizgi); border-radius: var(--r); padding: 28px; text-align: center; color: var(--soluk); }
+.surukle.ustunde { border-color: var(--vurgu); background: var(--vurgu-acik); }
+.bildirim:not(.acik) { opacity: 0; pointer-events: none; }
+.bildirim:empty { padding: 0; }
+.bildirim { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--yazi); color: var(--zemin); padding: 10px 16px; border-radius: 8px; z-index: 20; max-width: 90vw; }
+
+/* Sınıf ekranı: tahtaya yansıtılır, isim yok */
+.tahta { max-width: 900px; margin: 0 auto; text-align: center; }
+.tahta h1 { font-size: 30px; }
+.tahta table td, .tahta table th { font-size: 26px; padding: 12px 16px; text-align: center; }
+.tahta table th { font-size: 16px; }
+
+/* Karne (A4) */
+/* karne her temada beyaz kâğıt: jetonlar açık temaya sabitlenir (üzerine gelme, ızgara çizgisi okunur kalsın) */
+.karne { --zemin: #fff; --kart: #fff; --yazi: #111; --soluk: #555; --cizgi: #d5d9e0; --vurgu: #2759c4; --vurgu-acik: #eef2fb; color-scheme: light; }
+.karne { background: #fff; color: #111; max-width: 794px; margin: 0 auto; padding: 28px 34px; border: 1px solid var(--cizgi); }
+.karne h1 { font-size: 20px; margin: 0; }
+.karne .bas { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 12px; }
+.karne table { font-size: 13px; }
+.karne th { background: #f1f3f6; color: #333; position: static; }
+.karne td, .karne th { border-bottom: 1px solid #d5d9e0; padding: 5px 7px; }
+.karne h2 { font-size: 14px; margin: 14px 0 6px; }
+.karne .kucuk { font-size: 11.5px; color: #444; }
+.karne ul.kucuk { font-size: 11px; }
+/* her kazanım tek satır: karne A4 tek sayfaya sığar; tam adı uygulamadaki kazanım sekmesinde */
+.karne ul.kucuk li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.karne .ikili { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.karne svg.grafik text { fill: #555; }
+.karne .iyi { color: #1a7a42; } .karne .zayif { color: #b42323; }
+
+@media (max-width: 640px) {
+  header.ust { flex-wrap: wrap; padding: 0 8px; }
+  header.ust .marka { padding: 8px 0 0 8px; }
+  header.ust .surum { display: none; }
+  header.ust nav { width: 100%; overflow-x: auto; }
+  header.ust nav a { padding: 10px 8px; font-size: 14px; }
+  main { padding: 12px 12px 50px; }
+  h1 { font-size: 19px; }
+  .karne { padding: 12px; }
+  .karne td, .karne th { padding: 4px 3px; font-size: 12px; }
+  .karne td.sol { white-space: normal; }
+  .karne .ikili { grid-template-columns: 1fr; }
+  .tahta table td, .tahta table th { font-size: 18px; padding: 8px; }
+}
+
+@media print {
+  @page { size: A4; margin: 10mm; }
+  /* koyu tema açıkken de kâğıda açık renklerle basılır */
+  :root, :root:not([data-tema="acik"]) {
+    --zemin: #fff; --kart: #fff; --yazi: #111; --soluk: #555; --cizgi: #d5d9e0; --vurgu: #2759c4; --vurgu-acik: #eef2fb;
+    --iyi: #1a7a42; --orta: #9a6512; --zayif: #b42323; --iyi-z: #e3f4ea; --orta-z: #fbf0dc; --zayif-z: #fbe5e5; --golge: none; color-scheme: light;
+  }
+  body { background: #fff; }
+  .tablo-kap { overflow: visible; border: 0; }
+  table { font-size: 11px; }
+  th { position: static; }
+  header.ust, .yedek-serit, .yazdirma-yok, .bildirim { display: none !important; }
+  main { padding: 0; max-width: none; }
+  .karne { border: 0; padding: 0; max-width: none; }
+  .karne-sayfa { break-after: page; }
+  .karne-sayfa:last-child { break-after: auto; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+<header class="ust">
+  <span class="marka">Deneme Takip</span>
+  <nav id="menu">
+    <a href="#/sinavlar" data-kok="sinavlar">Sınavlar</a>
+    <a href="#/ogrenciler" data-kok="ogrenciler">Öğrenciler</a>
+    <a href="#/konu" data-kok="konu">Konu takibi</a>
+    <a href="#/elle" data-kok="elle">Elle sonuç</a>
+    <a href="#/veri" data-kok="veri">Veri ve yedek</a>
+  </nav>
+  <span class="bosluk"></span>
+  <span class="surum" id="surum"></span>
+</header>
+<div id="serit" class="yedek-serit gizli"></div>
+<main id="ekran"><p class="alt">Yükleniyor…</p></main>
+<input type="file" id="dosya-sec" accept=".json,application/json" class="gizli">
+<script>/* Deneme Takip · hesap motoru (saf işlevler; tarayıcıda ve Node'da çalışır).
+ *
+ * Veri biçimi (aktarım ve durum aynı yapıyı paylaşır):
+ *   sinav  = { id, ad, tarih, seviye, yayin, ceza, dersler:[ders], kagitlar:[kagit], notlar }
+ *   ders   = { id, ad, soru, anahtar:{A:[..], B:[..]}, kazanim:[[kimlik..]..] }
+ *            anahtar öğesi: kabul edilen harfler ('A', 'AB'); 'X' = iptal (değerlendirme dışı)
+ *   kagit  = { no, sinif, kitapcik, cevap:{dersId:'AB-*..'}, tp?:{dersId:[d,y,b,net]} }
+ *            cevap karakteri: A..E, '-' boş, '*' çift işaret (yanlış sayılır)
+ *   ceza   = kaç yanlış bir doğruyu götürür (0 = götürmez)
+ * Kurallar TestPlus'ın 812 ders sonucuyla birebir doğrulandı (6 Ekim 2026).
+ */
+(function (kok) {
+  'use strict';
+  const HARFLER = 'ABCDE';
+
+  function yuvarla(x, b = 2) {
+    const k = Math.pow(10, b);
+    return Math.round((x + Number.EPSILON) * k) / k;
+  }
+
+  function puanla(cevap, anahtar, ceza) {
+    let d = 0, y = 0, b = 0;
+    for (let i = 0; i < anahtar.length; i++) {
+      const dogru = anahtar[i];
+      if (dogru === 'X') continue;
+      const c = (cevap && cevap[i]) || '-';
+      if (c === '-') b++;
+      else if (c !== '*' && dogru.indexOf(c) >= 0) d++;
+      else y++;
+    }
+    const net = d - (ceza ? y / ceza : 0);
+    return { d, y, b, net };
+  }
+
+  function dersAnahtari(ders, kitapcik) {
+    const a = ders.anahtar || {};
+    return a[kitapcik] || a.A || Object.values(a)[0] || [];
+  }
+
+  /* Yarışma sıralaması: eşit puan aynı sırayı alır, sonraki sıra atlanır (1, 2, 2, 4). */
+  function sirala(dizi, deger) {
+    const sirali = dizi.slice().sort((a, b) => deger(b) - deger(a));
+    const sira = new Map();
+    let onceki = null, s = 0;
+    sirali.forEach((x, i) => {
+      const v = yuvarla(deger(x), 6);
+      if (v !== onceki) { s = i + 1; onceki = v; }
+      sira.set(x, s);
+    });
+    return sira;
+  }
+
+  /* Başarı oranının paydası: iptal (X) sorular düşülür. Elle sınavlarda anahtar yok; soru sayısı alınır. */
+  function gecerliSoru(ders) {
+    if (ders.elle) return ders.soru;
+    return dersAnahtari(ders, 'A').filter(k => k && k !== 'X').length || null;
+  }
+
+  /* Bir sınavın bütün kâğıtlarını puanlar; sıra, sınıf sırası ve ortalamaları ekler.
+   * basari = net ÷ geçerli soru; öğrencinin toplam başarısı yalnız girdiği derslerin sorularına bölünür. */
+  function sinavHesapla(sinav) {
+    const ceza = sinav.ceza || 0;
+    const gecerli = Object.fromEntries(sinav.dersler.map(d => [d.id, gecerliSoru(d)]));
+    const satirlar = sinav.kagitlar.map(k => {
+      const dersler = {};
+      let toplam = 0, payda = 0, girdi = false;
+      for (const ders of sinav.dersler) {
+        const cevap = k.cevap && k.cevap[ders.id];
+        if (cevap == null && !(k.elle && k.elle[ders.id])) continue;
+        let p;
+        if (k.elle && k.elle[ders.id]) {
+          const [d, y, b] = k.elle[ders.id];
+          p = { d, y, b, net: d - (ceza ? y / ceza : 0) };
+        } else {
+          p = puanla(cevap, dersAnahtari(ders, k.kitapcik), ceza);
+        }
+        p.basari = gecerli[ders.id] ? p.net / gecerli[ders.id] : null;
+        dersler[ders.id] = p;
+        toplam += p.net;
+        payda += gecerli[ders.id] || 0;
+        girdi = true;
+      }
+      return { kagit: k, no: k.no, sinif: k.sinif || '', dersler, toplam, basari: payda ? toplam / payda : null, girdi };
+    }).filter(s => s.girdi);
+
+    const genelSira = sirala(satirlar, s => s.toplam);
+    const siniflar = {};
+    satirlar.forEach(s => (siniflar[s.sinif] = siniflar[s.sinif] || []).push(s));
+    const sinifSira = new Map();
+    Object.values(siniflar).forEach(g => sirala(g, s => s.toplam).forEach((v, k) => sinifSira.set(k, v)));
+    satirlar.forEach(s => { s.sira = genelSira.get(s); s.sinifSira = sinifSira.get(s); });
+    satirlar.sort((a, b) => a.sira - b.sira || String(a.no).localeCompare(String(b.no), 'tr', { numeric: true }));
+
+    const ortalama = (grup) => {
+      const o = { kisi: grup.length, toplam: null, basari: null, dersler: {} };
+      if (!grup.length) return o;
+      o.toplam = grup.reduce((t, s) => t + s.toplam, 0) / grup.length;
+      // ortalama başarı: öğrenci başarılarının ortalaması (bir dersi girmeyen öğrenci kendi paydasıyla katılır)
+      const b = grup.filter(s => s.basari != null);
+      if (b.length) o.basari = b.reduce((t, s) => t + s.basari, 0) / b.length;
+      for (const ders of sinav.dersler) {
+        const g = grup.filter(s => s.dersler[ders.id]);
+        if (!g.length) continue;
+        const top = (f) => g.reduce((t, s) => t + s.dersler[ders.id][f], 0) / g.length;
+        const net = top('net');
+        o.dersler[ders.id] = { kisi: g.length, d: top('d'), y: top('y'), b: top('b'), net, basari: gecerli[ders.id] ? net / gecerli[ders.id] : null };
+      }
+      return o;
+    };
+    const sinifOrt = {};
+    Object.keys(siniflar).sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }))
+      .forEach(s => (sinifOrt[s] = ortalama(siniflar[s])));
+    return { sinav, satirlar, genel: ortalama(satirlar), siniflar: sinifOrt };
+  }
+
+  /* Soru analizi: güçlük (doğru oranı), şık dağılımı, ayırt edicilik (üst %27 − alt %27).
+   * Yalnız A kitapçığı ya da anahtarı A ile aynı sırada olan kâğıtlar alınır;
+   * B kitapçığının soru eşlemesi bilinmeden karıştırılmaz. */
+  function soruAnalizi(hesap, dersId) {
+    const ders = hesap.sinav.dersler.find(d => d.id === dersId);
+    if (!ders) return null;
+    const anahtar = dersAnahtari(ders, 'A');
+    const grup = hesap.satirlar.filter(s => s.dersler[dersId] && (s.kagit.kitapcik || 'A') === 'A' && s.kagit.cevap && s.kagit.cevap[dersId] != null);
+    const n = grup.length;
+    const sirali = grup.slice().sort((a, b) => b.dersler[dersId].net - a.dersler[dersId].net);
+    const dilim = Math.max(1, Math.round(n * 0.27));
+    const ust = new Set(sirali.slice(0, dilim)), alt = new Set(sirali.slice(-dilim));
+    const sorular = [];
+    for (let i = 0; i < ders.soru; i++) {
+      const dag = { A: 0, B: 0, C: 0, D: 0, E: 0, '-': 0, '*': 0 };
+      let dogru = 0, ustD = 0, altD = 0;
+      const kabul = anahtar[i] || '';
+      for (const s of grup) {
+        const c = s.kagit.cevap[dersId][i] || '-';
+        dag[c] = (dag[c] || 0) + 1;
+        const dg = kabul !== 'X' && c !== '-' && c !== '*' && kabul.indexOf(c) >= 0;
+        if (dg) { dogru++; if (ust.has(s)) ustD++; if (alt.has(s)) altD++; }
+      }
+      // en çok seçilen yanlış şık (çeldirici); iptal soruda yok
+      const iptal = kabul === 'X';
+      let celdirici = null;
+      if (!iptal) for (const h of HARFLER) if (kabul.indexOf(h) < 0 && dag[h] && (!celdirici || dag[h] > dag[celdirici])) celdirici = h;
+      sorular.push({
+        no: i + 1, anahtar: kabul, kisi: n, dogru,
+        guclukP: iptal || !n ? null : dogru / n,
+        ayirt: !iptal && n >= 4 ? (ustD - altD) / dilim : null,
+        bos: dag['-'], cift: dag['*'], dagilim: dag, celdirici,
+        kazanim: (ders.kazanim && ders.kazanim[i]) || [],
+      });
+    }
+    const disarida = hesap.satirlar.filter(s => s.dersler[dersId] && s.kagit.cevap && s.kagit.cevap[dersId] != null).length - n;
+    return { ders, kisi: n, disarida, sorular };
+  }
+
+  /* Kazanım analizi: her kazanım için soru sayısı, sınıf başarısı ve öğrenci bazlı başarı. */
+  function kazanimAnalizi(hesap, dersId) {
+    const sa = soruAnalizi(hesap, dersId);
+    if (!sa) return null;
+    const kaz = new Map();
+    for (const s of sa.sorular) {
+      for (const k of s.kazanim) {
+        if (!kaz.has(k)) kaz.set(k, { kimlik: k, sorular: [], dogru: 0, toplam: 0 });
+        const e = kaz.get(k);
+        e.sorular.push(s.no);
+        if (s.anahtar !== 'X') { e.dogru += s.dogru; e.toplam += s.kisi; }
+      }
+    }
+    const grup = hesap.satirlar.filter(s => s.dersler[dersId] && (s.kagit.kitapcik || 'A') === 'A' && s.kagit.cevap && s.kagit.cevap[dersId] != null);
+    const anahtar = dersAnahtari(sa.ders, 'A');
+    const ogrenci = grup.map(s => {
+      const bas = {};
+      for (const e of kaz.values()) {
+        let d = 0, t = 0;
+        for (const no of e.sorular) {
+          const kabul = anahtar[no - 1];
+          if (kabul === 'X') continue;
+          t++;
+          const c = s.kagit.cevap[dersId][no - 1] || '-';
+          if (c !== '-' && c !== '*' && kabul.indexOf(c) >= 0) d++;
+        }
+        bas[e.kimlik] = t ? d / t : null;
+      }
+      return { no: s.no, sinif: s.sinif, basari: bas };
+    });
+    const liste = [...kaz.values()].map(e => ({ ...e, basari: e.toplam ? e.dogru / e.toplam : null }));
+    return { ders: sa.ders, kazanimlar: liste, ogrenci };
+  }
+
+  /* Sınavlar arası konu takibi (koçun AKAS konu kodları, ders.konu[soru] = kod).
+   * Her konu için sınav başına soru numaraları, sınıf başarısı; her öğrenci için o konunun
+   * bütün sorularındaki doğru oranı. Yalnız A kitapçığı (soruAnalizi ile aynı kural). */
+  function konuTakibi(hesaplar, dersId) {
+    const ilgili = hesaplar.filter(h => h.sinav.dersler.some(d => d.id === dersId && Array.isArray(d.konu)))
+      .sort((a, b) => String(a.sinav.tarih).localeCompare(String(b.sinav.tarih)));
+    const konular = new Map();
+    const ogrenci = new Map();
+    for (const h of ilgili) {
+      const ders = h.sinav.dersler.find(d => d.id === dersId);
+      const anahtar = dersAnahtari(ders, 'A');
+      const grup = h.satirlar.filter(s => s.dersler[dersId] && (s.kagit.kitapcik || 'A') === 'A' && s.kagit.cevap && s.kagit.cevap[dersId] != null);
+      for (let i = 0; i < ders.soru; i++) {
+        const kod = ders.konu[i], kabul = anahtar[i];
+        if (!kod || !kabul || kabul === 'X') continue;
+        if (!konular.has(kod)) konular.set(kod, { kod, sinav: {}, soru: 0, dogru: 0, toplam: 0 });
+        const k = konular.get(kod);
+        (k.sinav[h.sinav.id] = k.sinav[h.sinav.id] || []).push(i + 1);
+        k.soru++;
+        for (const s of grup) {
+          const c = s.kagit.cevap[dersId][i] || '-';
+          const dg = c !== '-' && c !== '*' && kabul.indexOf(c) >= 0;
+          k.toplam++; if (dg) k.dogru++;
+          const key = String(s.no);
+          if (!ogrenci.has(key)) ogrenci.set(key, { no: s.no, sinif: s.sinif, konu: {} });
+          const o = ogrenci.get(key); o.sinif = s.sinif;
+          const e = o.konu[kod] = o.konu[kod] || { d: 0, t: 0, sinav: {} };
+          e.t++; if (dg) e.d++;
+          const es = e.sinav[h.sinav.id] = e.sinav[h.sinav.id] || { d: 0, t: 0 };
+          es.t++; if (dg) es.d++;
+        }
+      }
+    }
+    return {
+      sinavlar: ilgili.map(h => ({ id: h.sinav.id, ad: h.sinav.ad, tarih: h.sinav.tarih })),
+      konular: [...konular.values()].map(k => ({ ...k, basari: k.toplam ? k.dogru / k.toplam : null })),
+      ogrenci: [...ogrenci.values()],
+    };
+  }
+
+  /* Öğrencinin sınavlar arası gelişimi (ders adıyla eşleşir; tarih sırasına göre). */
+  function ogrenciGelisimi(hesaplar, no) {
+    return hesaplar
+      .slice()
+      .sort((a, b) => String(a.sinav.tarih).localeCompare(String(b.sinav.tarih)))
+      .map(h => {
+        const s = h.satirlar.find(x => String(x.no) === String(no));
+        if (!s) return null;
+        const sinifOrt = h.siniflar[s.sinif];
+        return {
+          sinavId: h.sinav.id, sinavAd: h.sinav.ad, tarih: h.sinav.tarih,
+          toplam: s.toplam, sira: s.sira, kisi: h.satirlar.length,
+          sinifSira: s.sinifSira, sinifKisi: sinifOrt ? sinifOrt.kisi : null,
+          genelOrt: h.genel.toplam, sinifOrt: sinifOrt ? sinifOrt.toplam : null,
+          basari: s.basari, genelBasari: h.genel.basari, sinifBasari: sinifOrt ? sinifOrt.basari : null,
+          dersler: h.sinav.dersler.filter(d => s.dersler[d.id]).map(d => ({
+            id: d.id, ad: d.ad, soru: d.soru, ...s.dersler[d.id],
+            genelOrt: h.genel.dersler[d.id] ? h.genel.dersler[d.id].net : null,
+            sinifOrt: sinifOrt && sinifOrt.dersler[d.id] ? sinifOrt.dersler[d.id].net : null,
+            sinifBasari: sinifOrt && sinifOrt.dersler[d.id] ? sinifOrt.dersler[d.id].basari : null,
+          })),
+        };
+      })
+      .filter(Boolean);
+  }
+
+  /* TestPlus değerleriyle çapraz denetim: aktarılan her kâğıt/ders için {tutan, tutmayan, ornek}. */
+  function tpDenetle(sinav) {
+    const h = sinavHesapla(sinav);
+    let tutan = 0, tutmayan = 0;
+    const ornek = [];
+    for (const s of h.satirlar) {
+      const tp = s.kagit.tp || {};
+      for (const [dersId, v] of Object.entries(tp)) {
+        const p = s.dersler[dersId];
+        if (!p) continue;
+        const ok = p.d === v[0] && p.y === v[1] && p.b === v[2] && Math.abs(p.net - v[3]) < 1e-9;
+        if (ok) tutan++; else { tutmayan++; if (ornek.length < 5) ornek.push({ no: s.no, dersId, bizim: [p.d, p.y, p.b, p.net], tp: v }); }
+      }
+    }
+    return { tutan, tutmayan, ornek };
+  }
+
+  /* Aktarım ya da yedek dosyasını mevcut duruma katar. Sınav kimliğe, öğrenci okul numarasına göre.
+   * Aynı kimlikli sınav yenisiyle değiştirilir; elle girilmiş öğrenci adı korunur (dosyada ad yoksa). */
+  function birlestir(durum, gelen) {
+    const d = durum || bosDurum();
+    const rapor = { yeniSinav: 0, guncelSinav: 0, yeniOgrenci: 0, kazanim: 0 };
+    const sinavlar = new Map(d.sinavlar.map(s => [s.id, s]));
+    for (const s of gelen.sinavlar || []) {
+      if (sinavlar.has(s.id)) rapor.guncelSinav++; else rapor.yeniSinav++;
+      sinavlar.set(s.id, s);
+    }
+    d.sinavlar = [...sinavlar.values()].sort((a, b) => String(a.tarih).localeCompare(String(b.tarih)));
+    const ogr = new Map(d.ogrenciler.map(o => [String(o.no), o]));
+    for (const o of gelen.ogrenciler || []) {
+      const eski = ogr.get(String(o.no));
+      if (!eski) { ogr.set(String(o.no), { ...o }); rapor.yeniOgrenci++; continue; }
+      if (o.ad) eski.ad = o.ad;
+      if (o.sinif) eski.sinif = o.sinif;
+    }
+    d.ogrenciler = [...ogr.values()];
+    const kaz = new Map(d.kazanimlar.map(k => [k.id, k]));
+    for (const k of gelen.kazanimlar || []) { if (!kaz.has(k.id)) rapor.kazanim++; kaz.set(k.id, { ...kaz.get(k.id), ...k }); }
+    d.kazanimlar = [...kaz.values()];
+    const konu = new Map((d.konular || []).map(k => [k.id, k]));
+    for (const k of gelen.konular || []) konu.set(k.id, { ...konu.get(k.id), ...k });
+    d.konular = [...konu.values()];
+    return { durum: d, rapor };
+  }
+
+  function bosDurum() {
+    return { bicim: 'deneme-takip/durum', surum: 1, sinavlar: [], ogrenciler: [], kazanimlar: [], konular: [], ayarlar: {} };
+  }
+
+  /* Bir dosyanın uygulamaya uygun olup olmadığını denetler; sorun listesini döner. */
+  function dogrula(veri) {
+    const sorun = [];
+    if (!veri || typeof veri !== 'object') return ['Dosya JSON nesnesi değil.'];
+    if (!/^deneme-takip\//.test(veri.bicim || '')) sorun.push('Bu dosya Deneme Takip dosyası değil.');
+    if (!Array.isArray(veri.sinavlar)) sorun.push('Sınav listesi yok.');
+    if (!Array.isArray(veri.ogrenciler)) sorun.push('Öğrenci listesi yok.');
+    if ('kazanimlar' in veri && !Array.isArray(veri.kazanimlar)) sorun.push('Kazanım listesi bozuk.');
+    if ('konular' in veri && !Array.isArray(veri.konular)) sorun.push('Konu listesi bozuk.');
+    const sayiMi = (x) => typeof x === 'number' && Number.isFinite(x);
+    for (const s of Array.isArray(veri.sinavlar) ? veri.sinavlar : []) {
+      if (!s || !s.id || !Array.isArray(s.dersler) || !s.dersler.length || !Array.isArray(s.kagitlar)) { sorun.push(`Sınav eksik: ${(s && (s.ad || s.id)) || '?'}`); continue; }
+      if (s.seviye != null && !Number.isInteger(s.seviye)) sorun.push(`${s.ad}: sınıf düzeyi geçersiz.`);
+      if (s.tarih && !/^\d{4}-\d{2}-\d{2}$/.test(s.tarih)) sorun.push(`${s.ad}: tarih geçersiz.`);
+      const kimlik = s.dersler.map(d => d && d.id);
+      if (kimlik.some(k => !k) || new Set(kimlik).size !== kimlik.length) { sorun.push(`${s.ad}: ders kimliği eksik ya da yinelenmiş.`); continue; }
+      for (const k of s.kagitlar) {
+        if (!k || (k.cevap != null && typeof k.cevap !== 'object') || (k.elle != null && typeof k.elle !== 'object')) { sorun.push(`${s.ad}: bozuk kâğıt.`); break; }
+        if (k.elle && Object.values(k.elle).some(v => !Array.isArray(v) || v.length !== 3 || !v.every(sayiMi))) { sorun.push(`${s.ad}: elle girilen değer bozuk.`); break; }
+      }
+      for (const d of s.dersler) {
+        if (!(d.soru > 0)) { sorun.push(`${s.ad} / ${d.ad}: soru sayısı geçersiz.`); continue; }
+        const a = d.anahtar && (d.anahtar.A || Object.values(d.anahtar)[0]);
+        if (!a || a.length !== d.soru) sorun.push(`${s.ad} / ${d.ad}: anahtar soru sayısıyla uyuşmuyor.`);
+      }
+    }
+    return sorun;
+  }
+
+  const Motor = { HARFLER, yuvarla, puanla, sirala, dersAnahtari, gecerliSoru, sinavHesapla, soruAnalizi, kazanimAnalizi, konuTakibi, ogrenciGelisimi, tpDenetle, birlestir, bosDurum, dogrula };
+  if (typeof module !== 'undefined' && module.exports) module.exports = Motor;
+  else kok.Motor = Motor;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>/* Deneme Takip · arayüz. Veri yalnız bu tarayıcıda (IndexedDB) ve koçun yedek dosyasında durur. */
+(function () {
+  'use strict';
+  const M = window.Motor;
+  const SURUM = 'v1.0 · 7 Ekim 2026';
+  const ESIK = { zayif: 0.5, iyi: 0.67 }; // AKAS paneliyle aynı: < %50 zayıf, ≥ %67 iyi
+  const VARSAYILAN_AYAR = { karneSira: true, karneKazanim: true, karneSoruDokumu: true, tahtaKisi: 7, tahtaDersler: false };
+
+  let durum = M.bosDurum();
+  const onbellek = new Map();
+  const $ = (s, k = document) => k.querySelector(s);
+  const ekran = () => $('#ekran');
+
+  /* ---------- yardımcılar ---------- */
+  const h = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const sayi = (x, b = 2) => (x == null || isNaN(x)) ? '–' : (Math.round(x * 100) / 100 || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: b });
+  const yuzde = (x) => (x == null || isNaN(x)) ? '–' : '%' + Math.round(x * 100);
+  const tarihYaz = (t) => { if (!t) return '–'; const [y, a, g] = String(t).split('-'); return h(`${g}.${a}.${y}`); };
+  const renkSinif = (p) => p == null ? '' : p < ESIK.zayif ? 'zayif' : p >= ESIK.iyi ? 'iyi' : 'orta';
+  const ayar = () => ({ ...VARSAYILAN_AYAR, ...(durum.ayarlar || {}) });
+  const ogrenci = (no) => durum.ogrenciler.find(o => String(o.no) === String(no));
+  const ogrAd = (no) => { const o = ogrenci(no); return o && o.ad ? o.ad : ''; };
+  const ogrEtiket = (no) => ogrAd(no) || `No ${no}`;
+  const sinavBul = (id) => durum.sinavlar.find(s => s.id === id);
+  const kazanimAd = (id) => { const k = durum.kazanimlar.find(x => x.id === id); return k ? k.ad : id; };
+  const kisaKazanim = (ad) => { const k = String(ad).split(' | ')[0].trim(); return k.length > 150 ? k.slice(0, 147).trimEnd() + '…' : k; };
+  const dersSoru = (s) => s.dersler.reduce((t, d) => t + d.soru, 0);
+
+  function hesap(sinav) {
+    if (!onbellek.has(sinav.id)) onbellek.set(sinav.id, M.sinavHesapla(sinav));
+    return onbellek.get(sinav.id);
+  }
+  function tumHesaplar() { return durum.sinavlar.map(hesap); }
+  let analizOnbellek = new WeakMap();
+  function kazanimAnalizi(x, dersId) {
+    let m = analizOnbellek.get(x); if (!m) { m = new Map(); analizOnbellek.set(x, m); }
+    if (!m.has(dersId)) m.set(dersId, M.kazanimAnalizi(x, dersId));
+    return m.get(dersId);
+  }
+
+  function araliklar(nolar) {
+    const p = []; let i = 0;
+    while (i < nolar.length) {
+      let j = i; while (j + 1 < nolar.length && nolar[j + 1] === nolar[j] + 1) j++;
+      p.push(j - i >= 2 ? `${nolar[i]}–${nolar[j]}` : nolar.slice(i, j + 1).join(', '));
+      i = j + 1;
+    }
+    return p.join(', ');
+  }
+
+  let bildirimZaman;
+  function bildir(metin) {
+    const b = bildirimAlani();
+    b.textContent = metin; b.classList.add('acik');
+    clearTimeout(bildirimZaman); bildirimZaman = setTimeout(() => b.classList.remove('acik'), 3500);
+  }
+  function bildirimAlani() {
+    let b = $('.bildirim');
+    if (!b) { b = document.createElement('div'); b.className = 'bildirim'; b.setAttribute('role', 'status'); b.setAttribute('aria-live', 'polite'); document.body.appendChild(b); }
+    return b;
+  }
+
+  /* ---------- depolama (IndexedDB) ---------- */
+  const DB = {
+    ac() {
+      if (this._p) return this._p;
+      this._p = new Promise((coz, red) => {
+        const r = indexedDB.open('deneme-takip', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('kv');
+        r.onsuccess = () => coz(r.result);
+        r.onerror = () => red(r.error);
+      });
+      return this._p;
+    },
+    async al(k) {
+      const db = await this.ac();
+      return new Promise((coz, red) => { const r = db.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => coz(r.result); r.onerror = () => red(r.error); });
+    },
+    async koy(k, v) {
+      const db = await this.ac();
+      return new Promise((coz, red) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => coz(); t.onerror = t.onabort = () => red(t.error || new Error('Yazma iptal edildi')); });
+    },
+  };
+
+  // Aynı anda açık başka sekme varsa değişikliği duyurur; o sekme veriyi yeniden okur
+  const kanal = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('deneme-takip') : null;
+  if (kanal) kanal.onmessage = async () => {
+    try {
+      const kayit = await DB.al('durum'); if (!kayit) return;
+      const taslak = durum.elleTaslak;
+      durum = { ...M.bosDurum(), ...kayit };
+      if (taslak) durum.elleTaslak = taslak; // bu sekmedeki yarım elle giriş öbür sekmenin yazısıyla silinmesin
+      onbellek.clear(); analizOnbellek = new WeakMap(); seritGuncelle();
+      const a = document.activeElement;
+      const yaziyor = a && a.matches && a.matches('input:not([type=checkbox]), textarea');
+      if (yaziyor) bildir('Veri başka bir sekmede değişti.');
+      else { yonlendir(); bildir('Veri başka bir sekmede değişti; ekran yenilendi.'); }
+    } catch (e) { console.error(e); }
+  };
+
+  // Başarılıysa true; yazılamazsa uyarır ve false döner (veri bu sekmede açık kalır)
+  async function kaydet() {
+    durum.degisti = Date.now();
+    onbellek.clear(); analizOnbellek = new WeakMap();
+    let tamam = true;
+    try {
+      await DB.koy('durum', durum);
+      if (kanal) kanal.postMessage('degisti');
+    } catch (e) {
+      console.error(e); tamam = false;
+      bildir('Tarayıcıya kaydedilemedi: ' + (e && e.message) + '. Sekmeyi kapatmadan Yedekle’ye basın.');
+    }
+    seritGuncelle();
+    return tamam;
+  }
+
+  // Seçim penceresi: [{ad, deger, ana}] → seçilen değer (Esc / Vazgeç: null)
+  function sec(baslik, metin, secenekler) {
+    return new Promise(coz => {
+      const d = document.createElement('dialog');
+      d.className = 'secim';
+      d.innerHTML = `<h2>${h(baslik)}</h2><p>${metin}</p><div class="satir">${secenekler.map((o, i) => `<button data-i="${i}" class="${o.ana ? 'ana' : ''}">${h(o.ad)}</button>`).join('')}</div>`;
+      d.addEventListener('click', ev => { const b = ev.target.closest('button[data-i]'); if (b) { d.close(); coz(secenekler[b.dataset.i].deger); } });
+      d.addEventListener('cancel', () => coz(null));
+      d.addEventListener('close', () => { coz(null); setTimeout(() => d.remove(), 0); }); // seçim yapıldıysa Promise zaten çözülmüştür
+      document.body.appendChild(d); d.showModal();
+    });
+  }
+
+  function seritGuncelle() {
+    const s = $('#serit');
+    const yedeksiz = durum.sinavlar.length && (!durum.sonYedek || (durum.degisti || 0) > durum.sonYedek);
+    s.classList.toggle('gizli', !yedeksiz);
+    if (yedeksiz) {
+      s.innerHTML = `<span>${durum.sonYedek ? 'Son yedekten sonra değişiklik var.' : 'Henüz yedek alınmadı.'} Tarayıcı verisi silinirse yedek dosyasından dönülür.</span><button class="ana" data-is="yedekle">Yedekle</button>`;
+    }
+  }
+
+  /* ---------- yedek ve içe aktarma ---------- */
+  function yedekMetni() {
+    return JSON.stringify({ ...durum, bicim: 'deneme-takip/durum', surum: 1, yedekTarihi: new Date().toISOString() });
+  }
+
+  async function yedekKaydedildi() {
+    durum.sonYedek = Date.now();
+    try { await DB.koy('durum', durum); if (kanal) kanal.postMessage('degisti'); } catch (e) { console.error(e); }
+    seritGuncelle();
+  }
+
+  async function yedekle(yeniDosya) {
+    const metin = yedekMetni();
+    if (window.showSaveFilePicker) {
+      let yazilan = null;
+      try {
+        let tutamac = yeniDosya ? null : await DB.al('yedekDosyasi');
+        if (tutamac && (await tutamac.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+          if ((await tutamac.requestPermission({ mode: 'readwrite' })) !== 'granted') tutamac = null;
+        }
+        if (!tutamac) {
+          tutamac = await window.showSaveFilePicker({ suggestedName: 'deneme-takip-yedek.json', types: [{ description: 'Deneme Takip yedeği', accept: { 'application/json': ['.json'] } }] });
+          await DB.koy('yedekDosyasi', tutamac);
+        }
+        const y = await tutamac.createWritable();
+        await y.write(metin); await y.close();
+        yazilan = tutamac;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+        console.warn('Dosyaya yazılamadı, indirmeye geçiliyor', e);
+        DB.koy('yedekDosyasi', null).catch(() => {}); // taşınmış ya da silinmiş dosya: sonraki yedekte konum yeniden sorulur
+      }
+      if (yazilan) {
+        durum.yedekAdi = yazilan.name;
+        await yedekKaydedildi();
+        bildir(`Yedeklendi: ${yazilan.name}`);
+        if (location.hash.startsWith('#/veri')) yonlendir();
+        return;
+      }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([metin], { type: 'application/json' }));
+    a.download = `deneme-takip-yedek-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    await yedekKaydedildi();
+    bildir('Yedek indirildi. Dosyayı Drive klasörüne taşıyın.');
+  }
+
+  async function dosyaIsle(dosya) {
+    try { await dosyaIsleIc(dosya); } catch (e) {
+      console.error(e);
+      iceAktarmaSonucu(`<div class="bilgi hata"><b>Dosya alınamadı.</b> ${h(e && e.message)}</div>`);
+    }
+  }
+
+  async function dosyaIsleIc(dosya) {
+    let veri;
+    try { veri = JSON.parse(await dosya.text()); } catch (e) { return bildir('Dosya okunamadı: geçerli bir JSON değil.'); }
+    const sorun = M.dogrula(veri);
+    if (sorun.length) return iceAktarmaSonucu(`<div class="bilgi hata"><b>Dosya alınmadı.</b><br>${sorun.slice(0, 8).map(h).join('<br>')}</div>`);
+    if (veri.bicim === 'deneme-takip/durum') {
+      let yerine = true;
+      if (durum.sinavlar.length || durum.elleTaslak || durum.ogrenciler.some(o => o.ad)) {
+        const eski = veri.degisti && durum.degisti && veri.degisti < durum.degisti;
+        const tarihi = veri.yedekTarihi ? new Date(veri.yedekTarihi).toLocaleString('tr-TR') : 'bilinmiyor';
+        const metin = `Yedek: ${veri.sinavlar.length} sınav, ${veri.ogrenciler.length} öğrenci (alındığı an: ${h(tarihi)}). Tarayıcıda şu an ${durum.sinavlar.length} sınav var.`
+          + (eski ? '<br><b>Dikkat: bu yedek, tarayıcıdaki veriden eski.</b>' : '')
+          + (durum.elleTaslak ? '<br>Yarım kalmış elle giriş “yerine koy” seçilirse silinir.' : '');
+        const c = await sec('Yedek dosyası', metin, [
+          { ad: 'Birleştir', deger: 'birlestir', ana: true },
+          { ad: 'Mevcut verinin yerine koy', deger: 'yerine' },
+          { ad: 'Vazgeç', deger: null },
+        ]);
+        if (!c) return;
+        yerine = c === 'yerine';
+      }
+      if (yerine) {
+        const tut = { sonYedek: durum.sonYedek, yedekAdi: durum.yedekAdi };
+        durum = { ...M.bosDurum(), ...veri, ...tut };
+        if (!(await kaydet())) return iceAktarmaSonucu(KAYIT_HATASI);
+        return iceAktarmaSonucu(`<div class="bilgi"><b>Yedek geri yüklendi.</b> ${veri.sinavlar.length} sınav, ${veri.ogrenciler.length} öğrenci.</div>`);
+      }
+    }
+    // TestPlus çapraz denetimi: hesap motorumuz aktarılan değerleri tutturmalı
+    const denetim = (veri.sinavlar || []).map(s => ({ ad: s.ad, ...M.tpDenetle(s) }));
+    const tutmayan = denetim.filter(d => d.tutmayan);
+    const { durum: yeni, rapor } = M.birlestir(durum, veri);
+    if (veri.ayarlar && !durum.ayarlar) yeni.ayarlar = veri.ayarlar;
+    durum = yeni;
+    if (!(await kaydet())) return iceAktarmaSonucu(KAYIT_HATASI);
+    const tutan = denetim.reduce((t, d) => t + d.tutan, 0);
+    let html = `<div class="bilgi"><b>Alındı.</b> Yeni sınav ${rapor.yeniSinav}, güncellenen ${rapor.guncelSinav}, yeni öğrenci ${rapor.yeniOgrenci}.`;
+    if (tutan) html += ` TestPlus ile karşılaştırılan ${tutan} ders sonucu${tutmayan.length ? '' : 'nun hepsi tuttu'}.`;
+    html += '</div>';
+    if (tutmayan.length) html += `<div class="bilgi uyari"><b>Dikkat:</b> şu sınavlarda hesap TestPlus ile tutmadı: ${tutmayan.map(d => h(d.ad) + ` (${d.tutmayan})`).join(', ')}.</div>`;
+    if (!veri.adlarVar && veri.bicim === 'deneme-takip/aktarim') html += `<div class="bilgi uyari">Bu dosyada öğrenci adları yok; öğrenciler okul numarasıyla görünür. Adlı aktarım için dönüştürücüyü <code>--adlar</code> ile çalıştırın.</div>`;
+    iceAktarmaSonucu(html);
+  }
+
+  const KAYIT_HATASI = '<div class="bilgi hata"><b>Dosya okundu ama tarayıcıya kaydedilemedi.</b> Veri bu sekmede açık; sekmeyi kapatmadan Yedekle’ye basın.</div>';
+  let bekleyenSonuc = '';
+  function iceAktarmaSonucu(html) {
+    bekleyenSonuc = html;
+    if (location.hash.startsWith('#/veri')) yonlendir(); else location.hash = '#/veri';
+  }
+
+  /* ---------- grafik ---------- */
+  function cizgiGrafik({ etiketler, seriler, yuzdeMi = false, yuks = 220 }) {
+    const G = 640, Y = yuks, sol = 40, sag = 12, ust = 14, alt = 36;
+    seriler = seriler.map(sr => ({ ...sr, degerler: sr.degerler.map(v => Number.isFinite(v) ? v : null) }));
+    const tum = seriler.flatMap(s => s.degerler).filter(v => v != null);
+    if (!tum.length) return '<p class="alt">Grafik için veri yok.</p>';
+    let min = Math.min(...tum), max = Math.max(...tum);
+    if (yuzdeMi) { min = Math.min(0, min); max = Math.max(1, max); } else { const p = (max - min) * 0.15 || 1; min = Math.floor(min - p); max = Math.ceil(max + p); }
+    const n = etiketler.length;
+    const ic = 26; // ilk ve son tarih etiketi kesilmesin
+    const x = (i) => n === 1 ? (sol + G - sag) / 2 : sol + ic + i * (G - sol - sag - 2 * ic) / (n - 1);
+    const y = (v) => ust + (1 - (v - min) / (max - min || 1)) * (Y - ust - alt);
+    let s = `<svg class="grafik" viewBox="0 0 ${G} ${Y}" role="img" aria-label="${h(seriler.map(sr => sr.ad).join(', '))} çizgi grafiği">`;
+    for (let k = 0; k <= 4; k++) {
+      const v = min + (max - min) * k / 4, yy = y(v);
+      s += `<line x1="${sol}" x2="${G - sag}" y1="${yy}" y2="${yy}" stroke="var(--cizgi)" />`;
+      s += `<text x="${sol - 6}" y="${yy + 4}" text-anchor="end">${yuzdeMi ? Math.round(v * 100) : sayi(v, 1)}</text>`;
+    }
+    etiketler.forEach((e, i) => { s += `<text x="${x(i)}" y="${Y - alt + 16}" text-anchor="middle">${h(e)}</text>`; });
+    seriler.forEach(sr => {
+      const nok = sr.degerler.map((v, i) => v == null ? null : [x(i), y(v)]);
+      const yol = nok.filter(Boolean).map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+      s += `<path d="${yol}" fill="none" stroke="${sr.renk}" stroke-width="${sr.kalin ? 2.6 : 1.8}" ${sr.kesik ? 'stroke-dasharray="5 4"' : ''}/>`;
+      nok.forEach((p, i) => { if (p) s += `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${sr.renk}"><title>${h(sr.ad)} · ${h(etiketler[i])}: ${yuzdeMi ? yuzde(sr.degerler[i]) : sayi(sr.degerler[i])}</title></circle>`; });
+    });
+    s += '</svg>';
+    s += `<div class="satir alt" style="gap:14px;margin-top:4px">${seriler.map(sr => `<span><span class="cubuk" style="width:14px;background:${sr.renk}"></span> ${h(sr.ad)}</span>`).join('')}</div>`;
+    return s;
+  }
+  const DERS_RENK = { 'Türkçe': '#2759c4', 'Sosyal Bilimler': '#1f8a4c', 'Matematik': '#c0392b', 'Fen Bilimleri': '#b7791f' };
+  const dersRenk = (ad) => DERS_RENK[ad] || ['#7d3cbd', '#138496', '#6b7280'][[...ad].reduce((t, c) => t + c.charCodeAt(0), 0) % 3];
+  const kisaTarih = (t) => t ? t.slice(8, 10) + '.' + t.slice(5, 7) + '.' + t.slice(2, 4) : '';
+
+  /* ---------- tablolar: tıklayınca sırala ---------- */
+  function tabloSiralanir(kap) {
+    kap.querySelectorAll('th.sirala').forEach((th, sutun) => {
+      th.addEventListener('click', () => {
+        const tbody = th.closest('table').tBodies[0];
+        const idx = [...th.parentNode.children].indexOf(th);
+        const artan = th.dataset.yon !== 'artan';
+        th.parentNode.querySelectorAll('th').forEach(x => delete x.dataset.yon);
+        th.dataset.yon = artan ? 'artan' : 'azalan';
+        const satirlar = [...tbody.rows];
+        const deger = (r) => { const c = r.cells[idx]; const v = c.dataset.d != null ? c.dataset.d : c.textContent; const t = String(v).trim().replace('%', '').replace(',', '.'); const n = t === '' ? NaN : Number(t); return isNaN(n) ? String(v) : n; };
+        satirlar.sort((a, b) => { const x = deger(a), y = deger(b); const r = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'tr', { numeric: true }); return artan ? r : -r; });
+        satirlar.forEach(r => tbody.appendChild(r));
+      });
+    });
+  }
+
+  /* ---------- ekranlar ---------- */
+  function bosEkran() {
+    return `<div class="bos-durum"><h1>Henüz sınav yok</h1>
+      <p>TestPlus’tan aktarılan dosyayı ya da bir yedek dosyasını buraya sürükleyin.</p>
+      <div class="surukle" id="surukle-alani" style="max-width:520px;margin:18px auto">Dosyayı buraya bırakın<br><br><button class="ana" data-is="dosya-sec">Dosya seç</button></div>
+      <p class="alt">Elle sonuç girmek için üstteki <a href="#/elle">Elle sonuç</a> sekmesini kullanın.</p></div>`;
+  }
+
+  function seviyeler() { return [...new Set(durum.sinavlar.map(s => s.seviye).filter(Boolean))].sort((a, b) => a - b); }
+
+  function gorSinavlar(sorgu) {
+    if (!durum.sinavlar.length) return bosEkran();
+    const sev = sorgu.seviye ? Number(sorgu.seviye) : null;
+    const sinavlar = durum.sinavlar.filter(s => !sev || s.seviye === sev).slice().reverse();
+    const hs = sinavlar.map(hesap);
+    const dersAdlari = [...new Set(sinavlar.flatMap(s => s.dersler.map(d => d.ad)))];
+    let html = `<div class="satir ayrik"><div><h1>Sınavlar</h1><div class="alt">${durum.sinavlar.length} sınav · ${durum.ogrenciler.length} öğrenci</div></div>
+      <div class="satir"><label class="alt">Sınıf düzeyi</label> <select data-is="seviye-sec"><option value="">Hepsi</option>${seviyeler().map(v => `<option value="${v}" ${v === sev ? 'selected' : ''}>${v}. sınıf</option>`).join('')}</select></div></div>`;
+    // trend: başarı yüzdesi = ortalama toplam net / toplam soru (sınavların soru sayısı farklı olabilir)
+    // Eğilim her sınıf düzeyi için ayrı çizilir: 9 ve 10. sınıf denemeleri aynı çizgide karşılaştırılmaz
+    (sev ? [sev] : seviyeler()).forEach(v => {
+      const kronolojik = durum.sinavlar.filter(s => s.seviye === v);
+      if (kronolojik.length < 2) return;
+      const kh = kronolojik.map(hesap);
+      const adlar = [...new Set(kronolojik.flatMap(s => s.dersler.map(d => d.ad)))];
+      const seriler = adlar.map(ad => ({
+        ad, renk: dersRenk(ad),
+        degerler: kh.map(x => { const d = x.sinav.dersler.find(dd => dd.ad === ad); const o = d && x.genel.dersler[d.id]; return o ? o.basari : null; }),
+      }));
+      seriler.unshift({ ad: 'Toplam', renk: 'var(--yazi)', kalin: true, degerler: kh.map(x => x.genel.basari) });
+      html += `<div class="kart"><div class="satir ayrik"><b>${v}. sınıf · ortalama başarı eğilimi</b><span class="alt">net ÷ soru sayısı, %</span></div>${cizgiGrafik({ etiketler: kronolojik.map(s => kisaTarih(s.tarih)), seriler, yuzdeMi: true })}</div>`;
+    });
+    html += `<div class="tablo-kap"><table><thead><tr><th class="sol">Tarih</th><th class="sol">Sınav</th><th>Düzey</th><th>Kişi</th>${dersAdlari.map(a => `<th title="ortalama net">${h(a)}</th>`).join('')}<th>Toplam net</th><th>Soru</th></tr></thead><tbody>`;
+    hs.forEach(x => {
+      const s = x.sinav;
+      html += `<tr class="tik" data-git="#/sinav/${encodeURIComponent(s.id)}"><td class="sol" data-d="${h(s.tarih)}">${tarihYaz(s.tarih)}</td><td class="sol">${h(s.ad)}${s.notlar && s.notlar.length ? ' <span class="rozet uyari" title="' + h(s.notlar.join(' ')) + '">not</span>' : ''}</td><td>${s.seviye ? s.seviye + '.' : '–'}</td><td>${x.satirlar.length}</td>`;
+      dersAdlari.forEach(ad => { const d = s.dersler.find(dd => dd.ad === ad); const o = d && x.genel.dersler[d.id]; html += `<td title="${d ? d.soru + ' soru' : ''}">${o ? sayi(o.net) : '–'}</td>`; });
+      html += `<td class="vurgu">${sayi(x.genel.toplam)}</td><td>${dersSoru(s)}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function sinavBasligi(s, x) {
+    return `<div class="satir ayrik"><div><div class="alt"><a href="#/sinavlar">Sınavlar</a> ›</div><h1>${h(s.ad)}</h1>
+      <div class="alt">${tarihYaz(s.tarih)}${s.yayin ? ' · ' + h(s.yayin) : ''} · ${x.satirlar.length} öğrenci · ${s.dersler.map(d => `${h(d.ad)} ${d.soru}`).join(', ')} soru · ${s.ceza ? s.ceza + ' yanlış 1 doğruyu götürür' : 'yanlış doğruyu götürmez'}</div></div>
+      <div class="satir yazdirma-yok"><a href="#/tahta/${encodeURIComponent(s.id)}"><button>Sınıf ekranı</button></a><a href="#/karne/${encodeURIComponent(s.id)}/hepsi"><button class="ana">Karneler</button></a></div></div>
+      ${(s.notlar || []).map(n => `<div class="bilgi uyari">${h(n)}</div>`).join('')}`;
+  }
+
+  function sekmeler(s, secili) {
+    const l = [['siralama', 'Sıralama'], ['dersler', 'Ders ortalamaları'], ['sorular', 'Soru analizi'], ['kazanimlar', 'Kazanım analizi']];
+    return `<div class="sekmeler">${l.map(([k, a]) => `<a href="#/sinav/${encodeURIComponent(s.id)}/${k}" class="${k === secili ? 'secili' : ''}">${a}</a>`).join('')}</div>`;
+  }
+
+  function sinifSecici(x, secili, is = 'sinif-sec') {
+    const s = Object.keys(x.siniflar);
+    if (s.length < 2) return '';
+    return `<label class="alt">Sınıf</label> <select data-is="${is}"><option value="">Hepsi</option>${s.map(v => `<option ${v === secili ? 'selected' : ''}>${h(v)}</option>`).join('')}</select>`;
+  }
+
+  function gorSinav(id, sekme, sorgu) {
+    const s = sinavBul(id);
+    if (!s) return '<p>Sınav bulunamadı. <a href="#/sinavlar">Sınavlara dön</a></p>';
+    const x = hesap(s);
+    sekme = sekme || 'siralama';
+    let html = sinavBasligi(s, x) + sekmeler(s, sekme);
+    if (sekme === 'siralama') html += sekmeSiralama(s, x, sorgu);
+    else if (sekme === 'dersler') html += sekmeDersler(s, x);
+    else if (sekme === 'sorular') html += sekmeSorular(s, x, sorgu);
+    else if (sekme === 'kazanimlar') html += sekmeKazanimlar(s, x, sorgu);
+    return html;
+  }
+
+  function sekmeSiralama(s, x, sorgu) {
+    const sinif = x.siniflar[sorgu.sinif] ? sorgu.sinif : ''; // eski bağlantıdaki olmayan sınıf: bütün sınıflar
+    const ayrinti = sorgu.ayrinti === '1';
+    const satirlar = x.satirlar.filter(r => !sinif || r.sinif === sinif);
+    const cok = Object.keys(x.siniflar).length > 1; // tek şubede sınıf sırası genel sırayla aynı
+    let html = `<div class="satir ayrik yazdirma-yok" style="margin:8px 0">${sinifSecici(x, sinif)}<label class="alt"><input type="checkbox" data-is="ayrinti" ${ayrinti ? 'checked' : ''}> Doğru / yanlış / boş göster</label></div>`;
+    html += `<div class="tablo-kap"><table><thead><tr><th class="sirala">Sıra</th>${cok ? '<th class="sirala" title="sınıf içi sıra">Sınıf sıra</th>' : ''}<th class="sol sirala">No</th><th class="sol sirala">Ad</th>${cok ? '<th class="sol sirala">Sınıf</th>' : ''}`;
+    s.dersler.forEach(d => { html += ayrinti ? `<th>${h(d.ad)} D</th><th>Y</th><th>B</th><th class="sirala">Net</th>` : `<th class="sirala" title="${d.soru} soru">${h(d.ad)}</th>`; });
+    html += `<th class="sirala">Toplam</th></tr></thead><tbody>`;
+    satirlar.forEach(r => {
+      html += `<tr ${r.no ? `class="tik" data-git="#/ogrenci/${encodeURIComponent(r.no)}"` : ''}><td>${r.sira}</td>${cok ? `<td>${r.sinifSira}</td>` : ''}<td class="sol">${h(r.no)}</td><td class="sol">${h(ogrAd(r.no)) || '<span class="alt">–</span>'}</td>${cok ? `<td class="sol">${h(r.sinif)}</td>` : ''}`;
+      s.dersler.forEach(d => {
+        const p = r.dersler[d.id];
+        if (!p) { html += ayrinti ? '<td>–</td><td>–</td><td>–</td><td>–</td>' : '<td>–</td>'; return; }
+        html += ayrinti ? `<td>${p.d}</td><td>${p.y}</td><td>${p.b}</td><td class="vurgu">${sayi(p.net)}</td>` : `<td title="D ${p.d} · Y ${p.y} · B ${p.b}">${sayi(p.net)}</td>`;
+      });
+      html += `<td class="vurgu">${sayi(r.toplam)}</td></tr>`;
+    });
+    const o = (sinif && x.siniflar[sinif]) || x.genel;
+    html += `</tbody><tfoot><tr><td colspan="${cok ? 5 : 3}" class="sol"><b>Ortalama</b> (${o.kisi} kişi)</td>`;
+    s.dersler.forEach(d => { const od = o.dersler[d.id]; html += ayrinti ? `<td>${od ? sayi(od.d, 1) : '–'}</td><td>${od ? sayi(od.y, 1) : '–'}</td><td>${od ? sayi(od.b, 1) : '–'}</td><td><b>${od ? sayi(od.net) : '–'}</b></td>` : `<td><b>${od ? sayi(od.net) : '–'}</b></td>`; });
+    html += `<td><b>${sayi(o.toplam)}</b></td></tr></tfoot></table></div>`;
+    return html;
+  }
+
+  function sekmeDersler(s, x) {
+    const gruplar = [['Genel', x.genel], ...Object.entries(x.siniflar).map(([k, v]) => [k, v])];
+    let html = `<div class="tablo-kap"><table><thead><tr><th class="sol">Grup</th><th>Kişi</th>${s.dersler.map(d => `<th>${h(d.ad)} net</th><th>Başarı</th>`).join('')}<th>Toplam net</th></tr></thead><tbody>`;
+    gruplar.forEach(([ad, o]) => {
+      html += `<tr><td class="sol"><b>${h(ad)}</b></td><td>${o.kisi}</td>`;
+      s.dersler.forEach(d => {
+        const od = o.dersler[d.id]; const p = od ? od.basari : null;
+        html += `<td>${od ? sayi(od.net) : '–'}</td><td><span class="cubuk-kap"><span class="cubuk" style="width:${Math.max(0, Math.min(100, (p || 0) * 100))}%"></span></span> <span class="${renkSinif(p)}">${yuzde(p)}</span></td>`;
+      });
+      html += `<td class="vurgu">${sayi(o.toplam)}</td></tr>`;
+    });
+    html += '</tbody></table></div><p class="alt">Başarı: ortalama net ÷ soru sayısı (iptal sorular hariç).</p>';
+    // sınıf düzeyindeki önceki sınavlarla karşılaştırma
+    const ayni = durum.sinavlar.filter(t => t.seviye === s.seviye && t.tarih <= s.tarih);
+    if (ayni.length > 1) {
+      const kh = ayni.map(hesap);
+      const seriler = s.dersler.map(d => ({ ad: d.ad, renk: dersRenk(d.ad), degerler: kh.map(k => { const dd = k.sinav.dersler.find(z => z.ad === d.ad); const o = dd && k.genel.dersler[dd.id]; return o ? o.basari : null; }) }));
+      html += `<div class="kart"><b>Bu sınava kadar ders başarısı (${s.seviye}. sınıf)</b>${cizgiGrafik({ etiketler: ayni.map(t => kisaTarih(t.tarih)), seriler, yuzdeMi: true })}</div>`;
+    }
+    return html;
+  }
+
+  function dersSecici(s, secili) {
+    return `<label class="alt">Ders</label> <select data-is="ders-sec">${s.dersler.map(d => `<option value="${h(d.id)}" ${d.id === secili ? 'selected' : ''}>${h(d.ad)}</option>`).join('')}</select>`;
+  }
+
+  function sekmeSorular(s, x, sorgu) {
+    const dersId = sorgu.ders || s.dersler[0].id;
+    const a = M.soruAnalizi(x, dersId);
+    if (!a) return '<p>Ders bulunamadı.</p>';
+    if (!a.kisi) return `<div class="satir">${dersSecici(s, dersId)}</div><div class="bilgi">Bu derste cevap dizisi olan kâğıt yok (elle girilen sonuçlarda soru analizi yapılamaz).</div>`;
+    let html = `<div class="satir ayrik" style="margin:8px 0">${dersSecici(s, dersId)}<span class="alt">${a.kisi} kâğıt${a.disarida ? ` (${a.disarida} B kitapçığı analiz dışı: soru eşlemesi bilinmiyor)` : ''} · güçlük: doğru oranı · ayırt edicilik: en iyi %27 ile en zayıf %27 arasındaki doğru oranı farkı</span></div>`;
+    html += `<div class="tablo-kap"><table><thead><tr><th class="sirala">Soru</th><th>Cevap</th><th class="sirala">Doğru</th>${M.HARFLER.split('').map(h_ => `<th>${h_}</th>`).join('')}<th>Boş</th><th title="çift işaret">Çift</th><th class="sirala">Ayırt edicilik</th><th class="sol">Kazanım</th></tr></thead><tbody>`;
+    a.sorular.forEach(q => {
+      const r = renkSinif(q.guclukP);
+      html += `<tr><td>${q.no}</td><td><b>${q.anahtar === 'X' ? 'İptal' : h(q.anahtar)}</b></td><td class="${r}" data-d="${q.guclukP == null ? -1 : q.guclukP}"><b>${yuzde(q.guclukP)}</b></td>`;
+      M.HARFLER.split('').forEach(hr => {
+        const n = q.dagilim[hr] || 0;
+        const dogru = q.anahtar.indexOf(hr) >= 0, celd = hr === q.celdirici && n >= Math.max(2, q.dogru);
+        html += `<td class="${dogru ? 'z-iyi' : celd ? 'z-zayif' : ''}">${n || ''}</td>`;
+      });
+      const ay = q.ayirt;
+      html += `<td>${q.bos || ''}</td><td>${q.cift || ''}</td><td data-d="${ay == null ? -9 : ay}" class="${ay == null ? '' : ay < 0.2 ? 'zayif' : ay >= 0.4 ? 'iyi' : 'orta'}">${ay == null ? '–' : sayi(ay)}</td>`;
+      html += `<td class="sol kazanim-ad" title="${h(q.kazanim.map(kazanimAd).join(' | '))}">${h(q.kazanim.map(kazanimAd).join(' | ')) || '<span class="alt">–</span>'}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    html += `<p class="alt">Yeşil: doğru şık. Kırmızı: doğru cevaptan çok ya da ona yakın seçilen çeldirici. Ayırt edicilik 0,40 ve üstü iyi, 0,20 altı zayıf (soru gözden geçirilmeli).</p>`;
+    return html;
+  }
+
+  function sekmeKazanimlar(s, x, sorgu) {
+    const dersId = sorgu.ders || s.dersler[0].id;
+    const k = M.kazanimAnalizi(x, dersId);
+    if (!k) return '<p>Ders bulunamadı.</p>';
+    let html = `<div class="satir ayrik" style="margin:8px 0">${dersSecici(s, dersId)}${sinifSecici(x, sorgu.sinif || '')}</div>`;
+    if (!k.kazanimlar.length) return html + `<div class="bilgi">Bu derste sorulara kazanım atanmamış. TestPlus’ta kazanım Excel’i yüklenmiş sınavlarda görünür.</div>`;
+    const liste = k.kazanimlar.slice().sort((a, b) => (a.basari ?? 1) - (b.basari ?? 1));
+    html += `<h2>Kapsam ve sınıf başarısı</h2><div class="tablo-kap"><table><thead><tr><th class="sol">Kazanım</th><th>Soru</th><th class="sirala">Başarı</th></tr></thead><tbody>`;
+    liste.forEach(e => {
+      html += `<tr><td class="sol kazanim-ad" title="${h(kazanimAd(e.kimlik))}">${h(kazanimAd(e.kimlik))}</td><td title="soru numaraları">${araliklar(e.sorular)}</td><td data-d="${e.basari == null ? -1 : e.basari}"><span class="cubuk-kap"><span class="cubuk" style="width:${(e.basari || 0) * 100}%"></span></span> <b class="${renkSinif(e.basari)}">${yuzde(e.basari)}</b></td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    const sinif = sorgu.sinif || '';
+    const ogr = k.ogrenci.filter(o => !sinif || o.sinif === sinif).sort((a, b) => String(a.no).localeCompare(String(b.no), 'tr', { numeric: true }));
+    html += `<h2>Öğrenci × kazanım ısı haritası</h2><p class="alt">Satır: öğrenci. Sütun: yukarıdaki listedeki sırayla kazanım (en zayıftan güçlüye). Hücre: o kazanımın sorularındaki doğru oranı. Üzerine gelince kazanım adı görünür.</p>`;
+    html += `<div class="tablo-kap"><table class="harita"><thead><tr><th class="sol">Öğrenci</th>${liste.map((e, i) => `<th title="${h(kazanimAd(e.kimlik))}">${i + 1}</th>`).join('')}<th>Ort.</th></tr></thead><tbody>`;
+    ogr.forEach(o => {
+      const degerler = liste.map(e => o.basari[e.kimlik]);
+      const gecerli = degerler.filter(v => v != null);
+      const ort = gecerli.length ? gecerli.reduce((a, b) => a + b, 0) / gecerli.length : null;
+      html += `<tr class="tik" data-git="#/ogrenci/${encodeURIComponent(o.no)}"><td class="sol">${h(ogrEtiket(o.no))}</td>${degerler.map((v, i) => `<td class="z-${renkSinif(v)}" title="${h(kazanimAd(liste[i].kimlik))}">${v == null ? '' : Math.round(v * 100)}</td>`).join('')}<td><b>${ort == null ? '' : Math.round(ort * 100)}</b></td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function gorOgrenciler(sorgu) {
+    if (!durum.ogrenciler.length) return bosEkran();
+    const hs = tumHesaplar();
+    const ara = (sorgu.ara || '').toLocaleLowerCase('tr');
+    const sinif = sorgu.sinif || '';
+    const siniflar = [...new Set(durum.ogrenciler.map(o => o.sinif).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
+    const satirlar = durum.ogrenciler
+      .filter(o => (!sinif || o.sinif === sinif) && (!ara || String(o.no).includes(ara) || (o.ad || '').toLocaleLowerCase('tr').includes(ara)))
+      .map(o => {
+        const g = M.ogrenciGelisimi(hs, o.no);
+        const son = g[g.length - 1], onceki = g[g.length - 2];
+        return { o, g, son, onceki };
+      })
+      .sort((a, b) => (a.o.sinif || '').localeCompare(b.o.sinif || '', 'tr', { numeric: true }) || String(a.o.no).localeCompare(String(b.o.no), 'tr', { numeric: true }));
+    let html = `<div class="satir ayrik"><div><h1>Öğrenciler</h1><div class="alt">${durum.ogrenciler.length} öğrenci</div></div>
+      <div class="satir"><a href="#/ozet"><button>Net özeti</button></a><input type="text" placeholder="No ya da ad ara" data-is="ogrenci-ara" value="${h(sorgu.ara || '')}"> <select data-is="ogr-sinif-sec"><option value="">Bütün sınıflar</option>${siniflar.map(v => `<option ${v === sinif ? 'selected' : ''}>${h(v)}</option>`).join('')}</select></div></div>`;
+    html += `<div class="tablo-kap"><table><thead><tr><th class="sol sirala">No</th><th class="sol sirala">Ad</th><th class="sol sirala">Sınıf</th><th class="sirala">Sınav</th><th class="sol">Son sınav</th><th class="sirala">Son toplam net</th><th class="sirala">Sıra</th><th class="sirala" title="son sınavın başarı yüzdesi ile bir öncekinin farkı">Değişim</th></tr></thead><tbody>`;
+    satirlar.forEach(({ o, g, son, onceki }) => {
+      let deg = null;
+      if (son && onceki) {
+        if (son.basari != null && onceki.basari != null) deg = son.basari - onceki.basari;
+      }
+      html += `<tr class="tik" data-git="#/ogrenci/${encodeURIComponent(o.no)}"><td class="sol">${h(o.no)}</td><td class="sol">${h(o.ad || '') || '<span class="alt">–</span>'}</td><td class="sol">${h(o.sinif || '')}</td><td>${g.length}</td><td class="sol">${son ? h(son.sinavAd) : '–'}</td><td class="vurgu">${son ? sayi(son.toplam) : '–'}</td><td>${son ? son.sira + ' / ' + son.kisi : '–'}</td><td data-d="${deg == null ? -99 : deg}" class="${deg == null ? '' : deg > 0.02 ? 'iyi' : deg < -0.02 ? 'zayif' : ''}">${deg == null ? '–' : (deg > 0 ? '▲ ' : deg < 0 ? '▼ ' : '') + Math.abs(Math.round(deg * 100)) + ' puan'}</td></tr>`;
+    });
+    html += '</tbody></table></div><p class="alt">Değişim: son iki sınavın başarı yüzdesi (toplam net ÷ toplam soru) farkı, yüzde puanı olarak.</p>';
+    return html;
+  }
+
+  /* Net özeti: öğrenci × sınav. Koçun Excel'indeki "Net Özeti"nin karşılığı; girilmeyen sınav boş kalır,
+   * sıra ortalama başarıya (net ÷ soru) göredir, böylece az sınava giren öğrenci haksız sıralanmaz. */
+  function gorOzet(sorgu) {
+    if (!durum.sinavlar.length) return bosEkran();
+    const sev = sorgu.seviye ? Number(sorgu.seviye) : (durum.sinavlar.filter(s => s.seviye).pop() || {}).seviye || null;
+    const sinavlar = durum.sinavlar.filter(s => !sev || s.seviye === sev);
+    const hs = sinavlar.map(hesap);
+    const dersAd = sorgu.ders || '';
+    const dersAdlari = [...new Set(sinavlar.flatMap(s => s.dersler.map(d => d.ad)))];
+    const sinif = sorgu.sinif || '';
+    const kayit = new Map();
+    hs.forEach((x, i) => x.satirlar.forEach(r => {
+      if (!r.no) return; // numarasız kâğıt öğrenciye bağlanamaz
+      let net, basari;
+      if (dersAd) {
+        const d = x.sinav.dersler.find(z => z.ad === dersAd);
+        if (!d || !r.dersler[d.id]) return;
+        ({ net, basari } = r.dersler[d.id]);
+      } else {
+        net = r.toplam; basari = r.basari;
+      }
+      const k = kayit.get(String(r.no)) || { no: r.no, sinif: r.sinif, hucre: Array(hs.length).fill(null) };
+      k.sinif = r.sinif; k.hucre[i] = { net, basari };
+      kayit.set(String(r.no), k);
+    }));
+    const siniflar = [...new Set([...kayit.values()].map(k => k.sinif).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
+    const satirlar = [...kayit.values()].filter(k => !sinif || k.sinif === sinif).map(k => {
+      const v = k.hucre.filter(Boolean), vb = v.filter(c => c.basari != null);
+      return { ...k, sayi: v.length, ortNet: v.reduce((t, c) => t + c.net, 0) / v.length, ortBasari: vb.length ? vb.reduce((t, c) => t + c.basari, 0) / vb.length : null };
+    });
+    const sira = M.sirala(satirlar, k => k.ortBasari == null ? -Infinity : k.ortBasari);
+    satirlar.sort((a, b) => sira.get(a) - sira.get(b) || String(a.no).localeCompare(String(b.no), 'tr', { numeric: true }));
+    let html = `<div class="satir ayrik"><div><div class="alt"><a href="#/ogrenciler">Öğrenciler</a> ›</div><h1>Net özeti</h1><div class="alt">${sev ? sev + '. sınıf · ' : ''}${sinavlar.length} sınav · ${satirlar.length} öğrenci</div></div>
+      <div class="satir"><select data-is="seviye-sec">${seviyeler().map(v => `<option value="${v}" ${v === sev ? 'selected' : ''}>${v}. sınıf</option>`).join('')}</select>
+      <select data-is="ozet-ders"><option value="">Toplam net</option>${dersAdlari.map(a => `<option ${a === dersAd ? 'selected' : ''}>${h(a)}</option>`).join('')}</select>
+      ${siniflar.length > 1 ? `<select data-is="sinif-sec"><option value="">Bütün sınıflar</option>${siniflar.map(v => `<option ${v === sinif ? 'selected' : ''}>${h(v)}</option>`).join('')}</select>` : ''}</div></div>`;
+    if (!satirlar.length) return html + '<p>Bu seçimde sonuç yok.</p>';
+    html += `<div class="tablo-kap"><table><thead><tr><th class="sirala">Sıra</th><th class="sol sirala">No</th><th class="sol sirala">Ad</th>${siniflar.length > 1 ? '<th class="sol sirala">Sınıf</th>' : ''}`;
+    sinavlar.forEach(s => { html += `<th class="sirala" title="${h(s.ad)}">${h(kisaTarih(s.tarih))}<br><span style="font-weight:400">${h((s.yayin || s.ad).replace(/ Yayınları$/, '').slice(0, 14))}</span></th>`; });
+    html += `<th class="sirala" title="girdiği sınav sayısı">Sınav</th><th class="sirala">Ort. net</th><th class="sirala" title="net ÷ soru sayısı ortalaması">Ort. başarı</th></tr></thead><tbody>`;
+    satirlar.forEach(k => {
+      html += `<tr class="tik" data-git="#/ogrenci/${encodeURIComponent(k.no)}"><td>${sira.get(k)}</td><td class="sol">${h(k.no)}</td><td class="sol">${h(ogrAd(k.no)) || '<span class="alt">–</span>'}</td>${siniflar.length > 1 ? `<td class="sol">${h(k.sinif)}</td>` : ''}`;
+      k.hucre.forEach(c => { html += c ? `<td data-d="${c.net}" class="${c.net < 0 ? 'zayif' : ''}">${sayi(c.net)}</td>` : '<td data-d="-999" class="alt" title="sınava girmedi">–</td>'; });
+      html += `<td>${k.sayi}</td><td class="vurgu">${sayi(k.ortNet)}</td><td data-d="${k.ortBasari == null ? -99 : k.ortBasari}">${yuzde(k.ortBasari)}</td></tr>`;
+    });
+    html += `</tbody><tfoot><tr><td colspan="${siniflar.length > 1 ? 4 : 3}" class="sol"><b>Ortalama</b></td>`;
+    sinavlar.forEach((s, i) => { const v = satirlar.map(k => k.hucre[i]).filter(Boolean); html += `<td><b>${v.length ? sayi(v.reduce((t, c) => t + c.net, 0) / v.length) : '–'}</b></td>`; });
+    html += `<td></td><td><b>${sayi(satirlar.reduce((t, k) => t + k.ortNet, 0) / satirlar.length)}</b></td><td></td></tr></tfoot></table></div>`;
+    html += `<p class="alt">“–”: sınava girmedi; ortalamaya katılmaz. Sıra ortalama başarıya (net ÷ soru, iptal sorular hariç) göredir; soru sayısı farklı sınavlar (ör. 25 soruluk) da böylece adil karşılaştırılır. Sütun başlığına tıklayınca o sınava göre sıralanır.</p>`;
+    return html;
+  }
+
+  /* Konu takibi: koçun AKAS konu kodlarıyla sınavlar arası kapsam ve öğrenci başarısı.
+   * AKAS'tan farkı: öğrenci hücresi ders yüzdesi değil, o konunun sorularındaki gerçek doğru oranıdır. */
+  const KAPSAM = (n) => n === 0 ? ['Sorulmamış', 'alt'] : n === 1 ? ['Az', 'zayif'] : n <= 5 ? ['Temsil', 'orta'] : ['Yeterli', 'iyi'];
+  const isaret = (p) => p == null ? '' : p >= ESIK.iyi ? '✦' : p >= ESIK.zayif ? '●' : '▾';
+
+  function gorKonu(sorgu) {
+    if (!durum.sinavlar.length) return bosEkran();
+    const konulu = durum.sinavlar.filter(s => s.dersler.some(d => Array.isArray(d.konu)));
+    let html = `<div class="satir ayrik"><div><h1>Konu takibi</h1><div class="alt">Sınavlar arası konu kapsamı ve öğrenci başarısı · konu kodları koçun AKAS eşlemesinden</div></div>`;
+    if (!konulu.length) return html + `</div><div class="bilgi">Hiçbir sınavda konu eşlemesi yok. Konu kodları dönüştürücüdeki AKAS eşleme dosyasından gelir.</div>`;
+    const sevler = [...new Set(konulu.map(s => s.seviye).filter(Boolean))].sort((a, b) => a - b);
+    const sev = sorgu.seviye ? Number(sorgu.seviye) : (sevler.length ? sevler[sevler.length - 1] : null);
+    const sinavlar = durum.sinavlar.filter(s => sev == null || s.seviye === sev);
+    const dersler = [];
+    sinavlar.forEach(s => s.dersler.forEach(d => { if (Array.isArray(d.konu) && !dersler.some(x => x.id === d.id)) dersler.push({ id: d.id, ad: d.ad }); }));
+    const dersId = dersler.some(d => d.id === sorgu.ders) ? sorgu.ders : (dersler[0] || {}).id;
+    const t = dersId ? M.konuTakibi(sinavlar.map(hesap), dersId) : { sinavlar: [], konular: [], ogrenci: [] };
+    const sinif = sorgu.sinif || '';
+    const siniflar = [...new Set(t.ogrenci.map(o => o.sinif).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
+    html += `<div class="satir"><select data-is="seviye-sec">${sevler.map(v => `<option value="${v}" ${v === sev ? 'selected' : ''}>${v}. sınıf</option>`).join('')}</select>
+      <select data-is="ders-sec">${dersler.map(d => `<option value="${h(d.id)}" ${d.id === dersId ? 'selected' : ''}>${h(d.ad)}</option>`).join('')}</select>
+      ${siniflar.length > 1 ? `<select data-is="sinif-sec"><option value="">Bütün sınıflar</option>${siniflar.map(v => `<option ${v === sinif ? 'selected' : ''}>${h(v)}</option>`).join('')}</select>` : ''}</div></div>`;
+    if (!dersId) return html + `<div class="bilgi">${sev ? sev + '. sınıf sınavlarında' : 'Bu sınavlarda'} konu eşlemesi yok.</div>`;
+    const eslemesiz = sinavlar.filter(s => !s.dersler.some(d => d.id === dersId && Array.isArray(d.konu)));
+    if (eslemesiz.length) html += `<div class="bilgi uyari">Konu eşlemesi olmayan ${eslemesiz.length} sınav bu rapora girmedi: ${eslemesiz.map(s => h(s.ad)).join(', ')}.</div>`;
+    if (!t.sinavlar.length) return html;
+    const ogr = t.ogrenci.filter(o => !sinif || o.sinif === sinif);
+    // katalogdaki bütün konular (hiç sorulmamışlar dahil) + katalogda olmayan kodlar
+    const katalog = (durum.konular || []).filter(k => k.ders === dersId);
+    const kodlar = [...new Set([...katalog.map(k => k.id), ...t.konular.map(k => k.kod)])];
+    const konuAd = (kod) => { const k = (durum.konular || []).find(x => x.id === kod); return k ? k.ad : ''; };
+    const satir = kodlar.map(kod => {
+      const k = t.konular.find(x => x.kod === kod) || { kod, sinav: {}, soru: 0 };
+      let d = 0, n = 0; ogr.forEach(o => { const e = o.konu[kod]; if (e) { d += e.d; n += e.t; } });
+      return { ...k, ad: konuAd(kod), sinifBasari: n ? d / n : null };
+    });
+    const sorulan = satir.filter(k => k.soru).sort((a, b) => (a.sinifBasari ?? 2) - (b.sinifBasari ?? 2));
+    const sorulmayan = satir.filter(k => !k.soru);
+    const say = (f) => satir.filter(f).length;
+    html += `<div class="izgara" style="margin:12px 0">
+      <div class="ozet"><b>${satir.length}</b><span>konu</span></div>
+      <div class="ozet"><b>${sorulmayan.length}</b><span>hiç sorulmamış</span></div>
+      <div class="ozet"><b>${say(k => k.soru === 1)}</b><span>tek soruyla temsil</span></div>
+      <div class="ozet"><b class="zayif">${say(k => k.sinifBasari != null && k.sinifBasari < ESIK.zayif)}</b><span>sınıf başarısı %50 altı</span></div></div>`;
+    html += `<h2>Kapsam ve sınıf başarısı</h2><div class="tablo-kap"><table><thead><tr><th class="sol sirala">Kod</th><th class="sol sirala">Konu</th>${t.sinavlar.map(s => `<th title="${h(s.ad)}">${h(kisaTarih(s.tarih))}</th>`).join('')}<th class="sirala">Soru</th><th class="sol">Kapsam</th><th class="sirala">Sınıf başarısı</th></tr></thead><tbody>`;
+    [...sorulan, ...sorulmayan].forEach(k => {
+      const [kd, ks] = KAPSAM(k.soru);
+      html += `<tr><td class="sol">${h(k.kod)}</td><td class="sol kazanim-ad" title="${h(k.ad)}">${h(k.ad) || '<span class="alt">katalogda yok</span>'}</td>`;
+      t.sinavlar.forEach(s => { const q = k.sinav[s.id]; html += `<td title="${q ? 'soru ' + araliklar(q) : ''}">${q ? q.length : ''}</td>`; });
+      html += `<td>${k.soru}</td><td class="sol ${ks}">${kd}</td><td data-d="${k.sinifBasari == null ? -1 : k.sinifBasari}">${k.sinifBasari == null ? '–' : `<span class="cubuk-kap"><span class="cubuk" style="width:${k.sinifBasari * 100}%"></span></span> <b class="${renkSinif(k.sinifBasari)}">${yuzde(k.sinifBasari)}</b>`}</td></tr>`;
+    });
+    html += `</tbody></table></div><p class="alt">Kapsam (AKAS ile aynı): 0 soru sorulmamış, 1 az, 2–5 temsil, 6 ve üstü yeterli. Hücredeki sayı o sınavdaki soru sayısı; üzerine gelince soru numaraları görünür.</p>`;
+    html += `<h2>Öğrenci × konu</h2><p class="alt">Hücre: öğrencinin o konunun bütün sorularındaki doğru oranı. ✦ %67 ve üstü · ● %50–66 · ▾ %50 altı. Sütunlar yukarıdaki sırayla (en zayıf konudan başlayarak); üzerine gelince konu ve doğru sayısı görünür.</p>`;
+    html += `<div class="tablo-kap"><table class="harita"><thead><tr><th class="sol">Öğrenci</th>${sorulan.map((k, i) => `<th title="${h(k.kod + ' ' + k.ad)}">${i + 1}</th>`).join('')}<th>Ort.</th></tr></thead><tbody>`;
+    ogr.slice().sort((a, b) => String(a.no).localeCompare(String(b.no), 'tr', { numeric: true })).forEach(o => {
+      let td = 0, tt = 0;
+      const hucre = sorulan.map(k => {
+        const e = o.konu[k.kod]; if (!e) return '<td></td>';
+        td += e.d; tt += e.t; const p = e.d / e.t;
+        return `<td class="z-${renkSinif(p)}" title="${h(k.kod + ' ' + k.ad)}: ${e.d}/${e.t}">${isaret(p)}</td>`;
+      }).join('');
+      html += `<tr class="tik" data-git="#/ogrenci/${encodeURIComponent(o.no)}"><td class="sol">${h(ogrEtiket(o.no))}</td>${hucre}<td><b>${tt ? Math.round(td / tt * 100) : ''}</b></td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function gorOgrenci(no) {
+    const o = ogrenci(no);
+    if (!o) return '<p>Öğrenci bulunamadı. <a href="#/ogrenciler">Öğrencilere dön</a></p>';
+    const g = M.ogrenciGelisimi(tumHesaplar(), no);
+    let html = `<div class="satir ayrik"><div><div class="alt"><a href="#/ogrenciler">Öğrenciler</a> ›</div><h1>${h(o.ad || 'Okul no ' + o.no)}</h1><div class="alt">Okul no ${h(o.no)} · ${h(o.sinif || '')} · ${g.length} sınav</div></div>
+      <div class="satir yazdirma-yok"><input type="text" data-is="ad-yaz" data-no="${h(o.no)}" placeholder="Ad soyad (sunucuya gitmez)" value="${h(o.ad || '')}" style="min-width:220px"> ${g.length ? `<a href="#/karne/${encodeURIComponent(g[g.length - 1].sinavId)}/${encodeURIComponent(o.no)}"><button class="ana">Son sınav karnesi</button></a>` : ''}</div></div>`;
+    if (!g.length) return html + '<p>Bu öğrencinin sınavı yok.</p>';
+    const etiket = g.map(x => kisaTarih(x.tarih));
+    html += `<div class="kart"><b>Gelişim</b> <span class="alt">· toplam net ÷ toplam soru, %</span>${cizgiGrafik({ etiketler: etiket, yuzdeMi: true, seriler: [
+      { ad: ogrEtiket(no), renk: 'var(--vurgu)', kalin: true, degerler: g.map(x => x.basari) },
+      { ad: 'Sınıf ortalaması', renk: 'var(--soluk)', kesik: true, degerler: g.map(x => x.sinifBasari) },
+    ] })}</div>`;
+    const dersAdlari = [...new Set(g.flatMap(x => x.dersler.map(d => d.ad)))];
+    html += `<div class="tablo-kap"><table><thead><tr><th class="sol">Tarih</th><th class="sol">Sınav</th>${dersAdlari.map(a => `<th>${h(a)}</th>`).join('')}<th>Toplam</th><th>Sınıf ort.</th><th>Sıra</th><th>Sınıf sıra</th><th></th></tr></thead><tbody>`;
+    g.slice().reverse().forEach(x => {
+      html += `<tr><td class="sol">${tarihYaz(x.tarih)}</td><td class="sol"><a href="#/sinav/${encodeURIComponent(x.sinavId)}">${h(x.sinavAd)}</a></td>`;
+      dersAdlari.forEach(a => { const d = x.dersler.find(z => z.ad === a); html += `<td title="${d ? `D ${d.d} · Y ${d.y} · B ${d.b} · sınıf ort. ${sayi(d.sinifOrt)}` : ''}" class="${d && d.sinifOrt != null ? (d.net >= d.sinifOrt ? 'iyi' : 'zayif') : ''}">${d ? sayi(d.net) : '–'}</td>`; });
+      html += `<td class="vurgu">${sayi(x.toplam)}</td><td>${sayi(x.sinifOrt)}</td><td>${x.sira} / ${x.kisi}</td><td>${x.sinifSira} / ${x.sinifKisi}</td><td><a href="#/karne/${encodeURIComponent(x.sinavId)}/${encodeURIComponent(no)}">karne</a></td></tr>`;
+    });
+    html += '</tbody></table></div><p class="alt">Yeşil: sınıf ortalamasının üstünde ya da eşit; kırmızı: altında.</p>';
+    return html;
+  }
+
+  /* ---------- karne ---------- */
+  function karneSayfasi(s, x, satir) {
+    const a = ayar();
+    const no = satir.no;
+    const g = M.ogrenciGelisimi(tumHesaplar(), no).filter(z => z.tarih <= s.tarih).slice(-6);
+    const sinifO = x.siniflar[satir.sinif];
+    const cok = Object.keys(x.siniflar).length > 1;
+    let html = `<div class="karne karne-sayfa"><div class="bas"><div><h1>${h(ogrAd(no) || 'Okul No ' + no)}</h1><div class="kucuk">${ogrAd(no) ? `Okul no ${h(no)} · ` : ''}Sınıf ${h(satir.sinif)}</div></div><div style="text-align:right"><b>${h(s.ad)}</b><div class="kucuk">${tarihYaz(s.tarih)}</div></div></div>`;
+    html += `<table><thead><tr><th class="sol">Ders</th><th>Soru</th><th>Doğru</th><th>Yanlış</th><th>Boş</th><th>Net</th>${cok ? '<th>Sınıf ort.</th><th>Genel ort.</th>' : '<th>Ortalama</th>'}</tr></thead><tbody>`;
+    s.dersler.forEach(d => {
+      const p = satir.dersler[d.id]; if (!p) return;
+      const so = sinifO && sinifO.dersler[d.id], go = x.genel.dersler[d.id];
+      html += `<tr><td class="sol">${h(d.ad)}</td><td>${d.soru}</td><td>${p.d}</td><td>${p.y}</td><td>${p.b}</td><td><b class="${so ? (p.net >= so.net ? 'iyi' : 'zayif') : ''}">${sayi(p.net)}</b></td><td>${so ? sayi(so.net) : '–'}</td>${cok ? `<td>${go ? sayi(go.net) : '–'}</td>` : ''}</tr>`;
+    });
+    html += `<tr><td class="sol"><b>Toplam</b></td><td>${s.dersler.filter(d => satir.dersler[d.id]).reduce((t, d) => t + d.soru, 0)}</td><td>${Object.values(satir.dersler).reduce((t, p) => t + p.d, 0)}</td><td>${Object.values(satir.dersler).reduce((t, p) => t + p.y, 0)}</td><td>${Object.values(satir.dersler).reduce((t, p) => t + p.b, 0)}</td><td><b>${sayi(satir.toplam)}</b></td><td>${sinifO ? sayi(sinifO.toplam) : '–'}</td>${cok ? `<td>${sayi(x.genel.toplam)}</td>` : ''}</tr></tbody></table>`;
+    if (a.karneSira) html += `<p class="kucuk">Sıra: genel <b>${satir.sira} / ${x.satirlar.length}</b>${sinifO && cok ? ` · sınıf içi <b>${satir.sinifSira} / ${sinifO.kisi}</b>` : ''}</p>`;
+    html += '<div class="ikili">';
+    if (g.length > 1) {
+      html += `<div><h2>Son sınavlarda gelişim (%)</h2>${cizgiGrafik({ etiketler: g.map(z => kisaTarih(z.tarih)), yuzdeMi: true, yuks: 180, seriler: [
+        { ad: 'Öğrenci', renk: '#2759c4', kalin: true, degerler: g.map(z => z.basari) },
+        { ad: 'Sınıf ort.', renk: '#888', kesik: true, degerler: g.map(z => z.sinifBasari) }] })}</div>`;
+    }
+    if (a.karneSoruDokumu) {
+      html += '<div><h2>Tekrar edilecek sorular</h2>';
+      s.dersler.forEach(d => {
+        const c = satir.kagit.cevap && satir.kagit.cevap[d.id]; if (c == null) return;
+        const an = M.dersAnahtari(d, satir.kagit.kitapcik);
+        const yanlis = [], bos = [];
+        for (let i = 0; i < d.soru; i++) { const k = an[i] || ''; if (!k || k === 'X') continue; const ch = c[i] || '-'; if (ch === '-') bos.push(i + 1); else if (ch === '*' || k.indexOf(ch) < 0) yanlis.push(i + 1); }
+        html += `<p class="kucuk"><b>${h(d.ad)}</b> · yanlış: ${yanlis.length ? araliklar(yanlis) : 'yok'}${bos.length ? ` · boş: ${araliklar(bos)}` : ''}</p>`;
+      });
+      html += `<p class="kucuk">Soru numaraları ${h(satir.kagit.kitapcik || 'A')} kitapçığına göredir.</p></div>`;
+    }
+    html += '</div>';
+    if (a.karneKazanim) {
+      const bloklar = [];
+      s.dersler.forEach(d => {
+        const k = kazanimAnalizi(x, d.id); if (!k || !k.kazanimlar.length) return;
+        const o = k.ogrenci.find(z => String(z.no) === String(no)); if (!o) return;
+        // Karnede kazanımın kısa başlığı yazılır ("|" sonrası alt maddeler atılır); aynı başlıklar birleşir
+        const grup = new Map();
+        k.kazanimlar.filter(e => o.basari[e.kimlik] != null && o.basari[e.kimlik] < ESIK.zayif).forEach(e => {
+          const ad = kisaKazanim(kazanimAd(e.kimlik));
+          const g = grup.get(ad) || { ad, basari: 1, sorular: new Set() };
+          g.basari = Math.min(g.basari, o.basari[e.kimlik]); e.sorular.forEach(n => g.sorular.add(n));
+          grup.set(ad, g);
+        });
+        const zayif = [...grup.values()].sort((p, q) => p.basari - q.basari || Math.min(...p.sorular) - Math.min(...q.sorular)).slice(0, 4); // A4 tek sayfaya sığsın
+        if (zayif.length) bloklar.push(`<p class="kucuk"><b>${h(d.ad)}</b></p><ul class="kucuk" style="margin:0 0 6px;padding-left:18px">${zayif.map(e => `<li title="${h(e.ad)}"><span style="color:#777">soru ${araliklar([...e.sorular].sort((a, b) => a - b))} ·</span> ${h(e.ad)}</li>`).join('')}</ul>`);
+      });
+      if (bloklar.length) html += `<h2>Çalışılması gereken kazanımlar</h2>${bloklar.join('')}`;
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function gorKarne(sinavId, kim, sorgu) {
+    const s = sinavBul(sinavId);
+    if (!s) return '<p>Sınav bulunamadı.</p>';
+    const x = hesap(s);
+    const sinif = x.siniflar[sorgu.sinif] ? sorgu.sinif : '';
+    const satirlar = kim === 'hepsi' ? x.satirlar.filter(r => !sinif || r.sinif === sinif).slice().sort((a, b) => String(a.no).localeCompare(String(b.no), 'tr', { numeric: true })) : x.satirlar.filter(r => String(r.no) === String(kim));
+    const a = ayar();
+    let html = `<div class="satir ayrik yazdirma-yok" style="margin-bottom:12px"><div><div class="alt"><a href="#/sinav/${encodeURIComponent(s.id)}">${h(s.ad)}</a> ›</div><h1>Karne${kim === 'hepsi' ? 'ler' : ''}</h1><div class="alt">${satirlar.length} sayfa · PDF için yazdır penceresinde “PDF olarak kaydet” seçin.</div></div>
+      <div class="satir">${kim === 'hepsi' ? sinifSecici(x, sinif) : ''}
+      <label class="alt"><input type="checkbox" data-ayar="karneSira" ${a.karneSira ? 'checked' : ''}> Sıra</label>
+      <label class="alt"><input type="checkbox" data-ayar="karneKazanim" ${a.karneKazanim ? 'checked' : ''}> Kazanımlar</label>
+      <label class="alt"><input type="checkbox" data-ayar="karneSoruDokumu" ${a.karneSoruDokumu ? 'checked' : ''}> Soru dökümü</label>
+      <button class="ana" data-is="yazdir">Yazdır / PDF</button></div></div>`;
+    if (!satirlar.length) return html + `<p>${kim === 'hepsi' ? 'Bu sınavda öğrenci yok.' : 'Bu öğrenci bu sınava girmemiş.'}</p>`;
+    if (satirlar.some(r => !ogrAd(r.no))) html += `<div class="bilgi uyari yazdirma-yok">Bazı öğrencilerin adı yok; karnede okul numarası yazar. Adlar öğrenci sayfasından ya da adlı aktarımla eklenir.</div>`;
+    html += satirlar.map(r => karneSayfasi(s, x, r)).join('');
+    return html;
+  }
+
+  /* ---------- sınıf ekranı (isimsiz, numaralı) ---------- */
+  function gorTahta(sinavId, sorgu) {
+    const s = sinavBul(sinavId);
+    if (!s) return '<p>Sınav bulunamadı.</p>';
+    const x = hesap(s);
+    const a = ayar();
+    const sinif = x.siniflar[sorgu.sinif] ? sorgu.sinif : '';
+    const kisi = Number(sorgu.kisi || a.tahtaKisi);
+    const satirlar = x.satirlar.filter(r => !sinif || r.sinif === sinif);
+    const sira = sinif ? (r) => r.sinifSira : (r) => r.sira;
+    const ust = satirlar.filter(r => sira(r) <= kisi);
+    let html = `<div class="satir ayrik yazdirma-yok"><div class="alt"><a href="#/sinav/${encodeURIComponent(s.id)}">${h(s.ad)}</a> ›</div>
+      <div class="satir">${sinifSecici(x, sinif)}<label class="alt">İlk</label> <select data-is="tahta-kisi">${[3, 5, 7, 10].map(n => `<option ${n === kisi ? 'selected' : ''}>${n}</option>`).join('')}</select>
+      <label class="alt"><input type="checkbox" data-ayar="tahtaDersler" ${a.tahtaDersler ? 'checked' : ''}> Ders netleri</label>
+      <button data-is="tam-ekran">Tam ekran</button></div></div>`;
+    html += `<div class="tahta"><h1>${h(s.ad)}</h1><p class="alt">${tarihYaz(s.tarih)}${sinif ? ' · ' + h(sinif) : ''} · ilk ${kisi}</p>
+      <div class="tablo-kap"><table><thead><tr><th>Sıra</th><th>Okul No</th>${a.tahtaDersler ? s.dersler.map(d => `<th>${h(d.ad)}</th>`).join('') : ''}<th>Toplam Net</th></tr></thead><tbody>`;
+    ust.forEach(r => { html += `<tr><td><b>${sira(r)}</b></td><td>${h(r.no)}</td>${a.tahtaDersler ? s.dersler.map(d => `<td>${r.dersler[d.id] ? sayi(r.dersler[d.id].net) : '–'}</td>`).join('') : ''}<td><b>${sayi(r.toplam)}</b></td></tr>`; });
+    html += `</tbody></table></div><p class="alt">Sınıf ortalaması ${sayi(((sinif && x.siniflar[sinif]) || x.genel).toplam)} net · ${satirlar.length} öğrenci</p></div>`;
+    return html;
+  }
+
+  /* ---------- elle sonuç ---------- */
+  const STANDART_DERSLER = [['Türkçe', 30], ['Sosyal Bilimler', 30], ['Matematik', 30], ['Fen Bilimleri', 30]];
+
+  function gorElle(sorgu) {
+    const taslak = durum.elleTaslak;
+    if (!taslak) {
+      const simdi = new Date(), bugun = new Date(simdi - simdi.getTimezoneOffset() * 60000).toISOString().slice(0, 10); // yerel gün
+      return `<h1>Elle sonuç girişi</h1><p class="alt">TestPlus’ta okutulmamış bir denemenin doğru ve yanlış sayılarını öğrenci öğrenci girersiniz. Soru ve kazanım analizi bu sınavlarda yapılamaz; sıralama, ortalama, gelişim ve karne çalışır.</p>
+      <div class="kart" id="elle-form"><div class="izgara" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
+        <label>Sınav adı<br><input type="text" name="ad" style="width:100%" placeholder="Yayın - Sınav adı"></label>
+        <label>Tarih<br><input type="date" name="tarih" value="${bugun}"></label>
+        <label>Sınıf düzeyi<br><select name="seviye">${[9, 10, 11, 12].map(v => `<option>${v}</option>`).join('')}</select></label>
+        <label>Yanlış götürme<br><select name="ceza"><option value="4">4 yanlış 1 doğruyu götürür</option><option value="0">Götürmez</option></select></label>
+      </div><h2>Dersler ve soru sayıları</h2><div class="satir">${STANDART_DERSLER.map(([d, n], i) => `<label class="kart" style="margin:0;padding:8px 10px"><input type="checkbox" name="d${i}" checked> ${d} <input type="number" name="n${i}" value="${n}" min="1" max="60"></label>`).join('')}</div>
+      <h2>Öğrenciler</h2><p class="alt">Listedeki öğrencilerden sınıf seçin; gerekirse okul numarası ekleyin.</p>
+      <div class="satir"><select name="sinif"><option value="">Sınıf seçin</option>${[...new Set(durum.ogrenciler.map(o => o.sinif).filter(Boolean))].sort().map(s => `<option>${h(s)}</option>`).join('')}</select>
+      <input type="text" name="ekno" placeholder="Ek okul no (virgülle)"></div>
+      <p><button class="ana" data-is="elle-basla">Giriş tablosunu aç</button></p></div>`;
+    }
+    const s = taslak;
+    let html = `<div class="satir ayrik"><div><h1>${h(s.ad)}</h1><div class="alt">${tarihYaz(s.tarih)} · ${s.dersler.map(d => `${h(d.ad)} ${d.soru}`).join(', ')} · Boş = soru − doğru − yanlış</div></div>
+      <div class="satir"><button data-is="elle-vazgec">Vazgeç</button><button class="ana" data-is="elle-kaydet">Sınavı kaydet</button></div></div>
+      <div class="tablo-kap"><table id="elle-tablo"><thead><tr><th class="sol">No</th><th class="sol">Ad</th>${s.dersler.map(d => `<th>${h(d.ad)} D</th><th>Y</th>`).join('')}<th>Toplam net</th></tr></thead><tbody>`;
+    s.kagitlar.forEach((k, i) => {
+      html += `<tr data-i="${i}"><td class="sol">${h(k.no)}</td><td class="sol">${h(ogrAd(k.no))}</td>${s.dersler.map(d => { const v = k.elle[d.id] || ['', '']; return `<td><input type="number" min="0" max="${d.soru}" data-d="${d.id}" data-f="0" value="${v[0] ?? ''}"></td><td><input type="number" min="0" max="${d.soru}" data-d="${d.id}" data-f="1" value="${v[1] ?? ''}"></td>`; }).join('')}<td class="vurgu" data-toplam></td></tr>`;
+    });
+    html += '</tbody></table></div><p class="alt">Boş bırakılan satırlar sınava katılmamış sayılır. Sekme tuşuyla hücreler arasında ilerleyin.</p>';
+    return html;
+  }
+
+  function elleToplamGuncelle() {
+    const s = durum.elleTaslak; if (!s) return;
+    document.querySelectorAll('#elle-tablo tbody tr').forEach(tr => {
+      const k = s.kagitlar[tr.dataset.i]; let t = 0, var_ = false, hata = false;
+      s.dersler.forEach(d => {
+        const v = k.elle[d.id];
+        if (elleGirildi(v)) { var_ = true; const dd = dolu(v[0]) ? +v[0] : 0, yy = dolu(v[1]) ? +v[1] : 0; if (elleGecersiz(dd, yy, d.soru)) hata = true; t += dd - (s.ceza ? yy / s.ceza : 0); }
+      });
+      const c = tr.querySelector('[data-toplam]');
+      c.textContent = var_ ? (hata ? 'geçersiz değer' : sayi(t)) : '';
+      c.className = hata ? 'zayif' : 'vurgu';
+    });
+  }
+
+  /* ---------- veri ve yedek ---------- */
+  function gorVeri() {
+    const a = ayar();
+    const son = durum.sonYedek ? new Date(durum.sonYedek).toLocaleString('tr-TR') : 'hiç alınmadı';
+    const sonuc = bekleyenSonuc; bekleyenSonuc = '';
+    return `<h1>Veri ve yedek</h1><div id="aktarma-sonuc">${sonuc}</div>
+      <div class="kart"><b>TestPlus’tan sonuç al</b><p class="alt">Masaüstündeki “TestPlus’tan Aktar” kısayolu dönüştürücüyü çalıştırır ve <code>testplus_aktarim.json</code> dosyasını Belgeler › Deneme Takip klasörüne yazar ve klasörü açar. Dosyayı buraya bırakın ya da seçin. Aynı sınav yeniden alınırsa güncellenir; mükerrer olmaz.</p>
+      <div class="surukle" id="surukle-alani">Aktarım ya da yedek dosyasını buraya bırakın<br><br><button class="ana" data-is="dosya-sec">Dosya seç</button></div></div>
+      <div class="kart"><b>Yedek</b><p class="alt">Son yedek: ${h(son)}${durum.yedekAdi ? ' · ' + h(durum.yedekAdi) : ''}. Yedek dosyasını Drive’ın eşitlenen klasörüne (<code>F:\\My Drive\\Google Drive</code>) kaydedin; telefon ve diğer bilgisayar aynı dosyadan geri yükler. İlk yedekte konum sorulur, sonrakilerde aynı dosyanın üstüne yazılır.</p>
+      <div class="satir"><button class="ana" data-is="yedekle">Yedekle</button><button data-is="yedek-yeni">Başka bir dosyaya yedekle</button><button data-is="dosya-sec">Yedekten geri yükle</button></div></div>
+      <div class="kart"><b>Özet</b><p>${durum.sinavlar.length} sınav · ${durum.ogrenciler.length} öğrenci (${durum.ogrenciler.filter(o => o.ad).length} adlı) · ${durum.kazanimlar.length} kazanım</p></div>
+      <div class="kart"><b>Ayarlar</b><div class="satir" style="margin-top:8px">
+        <label><input type="checkbox" data-ayar="karneSira" ${a.karneSira ? 'checked' : ''}> Karnede sıra</label>
+        <label><input type="checkbox" data-ayar="karneKazanim" ${a.karneKazanim ? 'checked' : ''}> Karnede kazanımlar</label>
+        <label><input type="checkbox" data-ayar="karneSoruDokumu" ${a.karneSoruDokumu ? 'checked' : ''}> Karnede soru dökümü</label>
+        <label>Sınıf ekranında ilk <select data-ayar-sec="tahtaKisi">${[3, 5, 7, 10].map(n => `<option ${n === a.tahtaKisi ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div></div>
+      <p class="alt">Veriler yalnız bu tarayıcıda ve sizin yedek dosyanızda durur; hiçbir sunucuya gönderilmez.</p>`;
+  }
+
+  /* ---------- yönlendirme ---------- */
+  function hashCoz() {
+    const [yol, q] = location.hash.replace(/^#\/?/, '').split('?');
+    const coz = (x) => { try { return decodeURIComponent(x); } catch (e) { return x; } };
+    const parca = yol.split('/').filter(Boolean).map(coz);
+    const sorgu = Object.fromEntries(new URLSearchParams(q || ''));
+    return { parca, sorgu };
+  }
+  function sorguYaz(degis, yerinde = false) {
+    const { parca, sorgu } = hashCoz();
+    const s = { ...sorgu, ...degis };
+    Object.keys(s).forEach(k => (s[k] === '' || s[k] == null) && delete s[k]);
+    const q = new URLSearchParams(s).toString();
+    const yeni = '#/' + parca.map(encodeURIComponent).join('/') + (q ? '?' + q : '');
+    if (!yerinde) { location.hash = yeni; return; }
+    history.replaceState(null, '', yeni); // arama yazarken "Geri" tuşu her harfe dönmesin
+    yonlendir();
+    const i = $('[data-is="ogrenci-ara"]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+  }
+
+  function yonlendir() {
+    const { parca, sorgu } = hashCoz();
+    const kok = parca[0] || 'sinavlar';
+    document.querySelectorAll('#menu a').forEach(a => a.classList.toggle('secili', a.dataset.kok === kok || (kok === 'sinav' && a.dataset.kok === 'sinavlar') || ((kok === 'ogrenci' || kok === 'ozet') && a.dataset.kok === 'ogrenciler')));
+    let html;
+    try {
+      if (kok === 'sinavlar') html = gorSinavlar(sorgu);
+      else if (kok === 'sinav') html = gorSinav(parca[1], parca[2], sorgu);
+      else if (kok === 'ogrenciler') html = gorOgrenciler(sorgu);
+      else if (kok === 'ozet') html = gorOzet(sorgu);
+      else if (kok === 'konu') html = gorKonu(sorgu);
+      else if (kok === 'ogrenci') html = gorOgrenci(parca[1]);
+      else if (kok === 'karne') html = gorKarne(parca[1], parca[2] || 'hepsi', sorgu);
+      else if (kok === 'tahta') html = gorTahta(parca[1], sorgu);
+      else if (kok === 'elle') html = gorElle(sorgu);
+      else if (kok === 'veri') html = gorVeri();
+      else html = gorSinavlar(sorgu);
+    } catch (e) {
+      console.error(e);
+      html = `<div class="bilgi hata"><b>Bir hata oluştu.</b> ${h(e.message)}</div>`;
+    }
+    ekran().innerHTML = html;
+    tabloSiralanir(ekran());
+    surukleBagla();
+    if (kok === 'elle') elleToplamGuncelle();
+    const baslik = ekran().querySelector('h1');
+    document.title = (baslik ? baslik.textContent.trim() + ' · ' : '') + 'Deneme Takip';
+    ekran().querySelectorAll('tr[data-git]').forEach(tr => { tr.tabIndex = 0; });
+  }
+
+  function surukleBagla() {
+    const al = $('#surukle-alani'); if (!al) return;
+    ['dragenter', 'dragover'].forEach(e => al.addEventListener(e, ev => { ev.preventDefault(); al.classList.add('ustunde'); }));
+    ['dragleave', 'drop'].forEach(e => al.addEventListener(e, ev => { ev.preventDefault(); al.classList.remove('ustunde'); }));
+    al.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if (f) dosyaIsle(f); });
+  }
+
+  /* ---------- olaylar ---------- */
+  const dosyaSuruklenir = (ev) => ev.dataTransfer && [...ev.dataTransfer.types].includes('Files');
+  window.addEventListener('dragover', ev => { if (dosyaSuruklenir(ev)) ev.preventDefault(); });
+  window.addEventListener('drop', ev => {
+    if (!dosyaSuruklenir(ev)) return;
+    ev.preventDefault();
+    if (ev.target.closest && ev.target.closest('#surukle-alani')) return; // alanın kendi işleyicisi alır
+    const f = ev.dataTransfer && ev.dataTransfer.files[0]; if (f) dosyaIsle(f);
+  });
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' && ev.target.matches && ev.target.matches('tr[data-git]')) location.hash = ev.target.dataset.git;
+  });
+  document.addEventListener('click', async (ev) => {
+    const git = ev.target.closest('tr[data-git]');
+    if (git && !ev.target.closest('a,button,input,select')) { location.hash = git.dataset.git; return; }
+    const b = ev.target.closest('[data-is]'); if (!b || b.tagName === 'SELECT' || b.tagName === 'INPUT') return;
+    const is = b.dataset.is;
+    if (is === 'dosya-sec') $('#dosya-sec').click();
+    else if (is === 'yedekle') yedekle(false);
+    else if (is === 'yedek-yeni') yedekle(true);
+    else if (is === 'yazdir') window.print();
+    else if (is === 'tam-ekran') { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
+    else if (is === 'elle-basla') elleBasla();
+    else if (is === 'elle-vazgec') { if (confirm('Girilen değerler silinsin mi?')) { delete durum.elleTaslak; await kaydet(); yonlendir(); } }
+    else if (is === 'elle-kaydet') elleKaydet();
+  });
+
+  document.addEventListener('change', async (ev) => {
+    const t = ev.target;
+    if (t.id === 'dosya-sec') { const f = t.files[0]; t.value = ''; if (f) dosyaIsle(f); return; }
+    if (t.dataset.ayar) { durum.ayarlar = { ...ayar(), [t.dataset.ayar]: t.checked }; await kaydet(); yonlendir(); return; }
+    if (t.dataset.ayarSec) { durum.ayarlar = { ...ayar(), [t.dataset.ayarSec]: Number(t.value) }; await kaydet(); return; }
+    const is = t.dataset.is;
+    if (is === 'seviye-sec') sorguYaz({ seviye: t.value });
+    else if (is === 'sinif-sec') sorguYaz({ sinif: t.value });
+    else if (is === 'ders-sec') sorguYaz({ ders: t.value });
+    else if (is === 'ayrinti') sorguYaz({ ayrinti: t.checked ? '1' : '' });
+    else if (is === 'ogr-sinif-sec') sorguYaz({ sinif: t.value });
+    else if (is === 'tahta-kisi') sorguYaz({ kisi: t.value });
+    else if (is === 'ozet-ders') sorguYaz({ ders: t.value });
+    else if (is === 'ad-yaz') { const o = ogrenci(t.dataset.no); if (o) { o.ad = t.value.trim() || undefined; await kaydet(); bildir('Ad kaydedildi.'); } }
+  });
+
+  let araZaman, elleZaman;
+  const dolu = (x) => x !== '' && x != null;
+  const elleGirildi = (v) => v && (dolu(v[0]) || dolu(v[1]));
+  const elleGecersiz = (dd, yy, soru) => !Number.isInteger(dd) || !Number.isInteger(yy) || dd < 0 || yy < 0 || dd + yy > soru;
+  document.addEventListener('input', (ev) => {
+    const t = ev.target;
+    if (t.dataset.is === 'ogrenci-ara') { clearTimeout(araZaman); araZaman = setTimeout(() => { sorguYaz({ ara: t.value }, true); }, 300); }
+    if (t.closest && t.closest('#elle-tablo') && durum.elleTaslak) {
+      const tr = t.closest('tr'); const k = durum.elleTaslak.kagitlar[tr.dataset.i];
+      const v = k.elle[t.dataset.d] || ['', '']; v[Number(t.dataset.f)] = t.value === '' ? '' : Number(t.value); k.elle[t.dataset.d] = v;
+      elleToplamGuncelle();
+      clearTimeout(elleZaman); elleZaman = setTimeout(() => DB.koy('durum', durum), 600);
+    }
+  });
+
+  // arama kutusu yeniden çizimde odağı kaybetmesin
+  window.addEventListener('hashchange', () => {
+    const odak = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.is;
+    yonlendir();
+    if (odak === 'ogrenci-ara') { const i = $('[data-is="ogrenci-ara"]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
+  });
+
+  async function elleBasla() {
+    const f = $('#elle-form');
+    const v = (n) => f.querySelector(`[name="${n}"]`);
+    const ad = v('ad').value.trim();
+    if (!ad) return bildir('Sınav adını yazın.');
+    const dersler = STANDART_DERSLER.map(([d], i) => v('d' + i).checked ? { id: d.toLocaleLowerCase('tr').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/[^a-z0-9]/g, ''), ad: d, soru: Number(v('n' + i).value) } : null).filter(Boolean);
+    if (!dersler.length) return bildir('En az bir ders seçin.');
+    if (dersler.some(d => !Number.isInteger(d.soru) || d.soru < 1 || d.soru > 100)) return bildir('Soru sayısı 1 ile 100 arasında tam sayı olmalı.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v('tarih').value)) return bildir('Sınav tarihini girin.');
+    const sinif = v('sinif').value;
+    const nolar = durum.ogrenciler.filter(o => sinif && o.sinif === sinif).map(o => String(o.no));
+    v('ekno').value.split(/[,\s]+/).map(x => x.trim()).filter(Boolean).forEach(n => { if (!nolar.includes(n)) nolar.push(n); });
+    if (!nolar.length) return bildir('Sınıf seçin ya da okul numarası yazın.');
+    nolar.sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
+    durum.elleTaslak = {
+      id: 'el-' + Date.now().toString(36), ad, tarih: v('tarih').value, seviye: Number(v('seviye').value), yayin: ad.includes(' - ') ? ad.split(' - ')[0] : null,
+      ceza: Number(v('ceza').value), notlar: ['Elle girildi; soru ve kazanım analizi yok.'],
+      dersler: dersler.map(d => ({ ...d, anahtar: { A: Array(d.soru).fill('X') }, kazanim: Array(d.soru).fill([]), elle: true })),
+      kagitlar: nolar.map(no => ({ no, sinif: (ogrenci(no) || {}).sinif || sinif, kitapcik: 'A', elle: {} })),
+    };
+    await kaydet(); yonlendir();
+  }
+
+  async function elleKaydet() {
+    const s = durum.elleTaslak; if (!s) return;
+    const hatali = [];
+    const kagitlar = s.kagitlar.map(k => {
+      const elle = {};
+      s.dersler.forEach(d => {
+        const v = k.elle[d.id];
+        if (!elleGirildi(v)) return;
+        const dd = dolu(v[0]) ? +v[0] : 0, yy = dolu(v[1]) ? +v[1] : 0;
+        if (elleGecersiz(dd, yy, d.soru)) hatali.push(`${k.no} ${d.ad}`);
+        elle[d.id] = [dd, yy, d.soru - dd - yy];
+      });
+      return { ...k, elle };
+    }).filter(k => Object.keys(k.elle).length);
+    if (hatali.length) return bildir('Geçersiz değer (tam sayı olmalı, doğru + yanlış soru sayısını aşmamalı): ' + hatali.slice(0, 4).join(', '));
+    if (!kagitlar.length) return bildir('Hiç değer girilmedi.');
+    const sinav = { ...s, kagitlar };
+    const yeniOgr = kagitlar.filter(k => !ogrenci(k.no)).map(k => ({ no: k.no, sinif: k.sinif }));
+    durum = M.birlestir(durum, { sinavlar: [sinav], ogrenciler: yeniOgr, kazanimlar: [] }).durum;
+    delete durum.elleTaslak;
+    if (!(await kaydet())) { durum.elleTaslak = s; return; } // girilen değerler kaybolmasın
+    location.hash = '#/sinav/' + encodeURIComponent(sinav.id);
+    bildir('Sınav kaydedildi. Yedeklemeyi unutmayın.');
+  }
+
+  /* ---------- başlat ---------- */
+  async function baslat() {
+    $('#surum').textContent = SURUM;
+    bildirimAlani(); // ekran okuyucu canlı bölgeyi ilk bildirimden önce tanısın
+    try {
+      const kayit = await DB.al('durum');
+      if (kayit) durum = { ...M.bosDurum(), ...kayit };
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+    } catch (e) {
+      ekran().innerHTML = `<div class="bilgi hata"><b>Tarayıcı deposu açılamadı.</b> Gizli pencerede ya da dosyadan açıldıysa veriler saklanamaz. ${h(e.message)}</div>`;
+      return;
+    }
+    seritGuncelle();
+    yonlendir();
+  }
+  // Elle giriş taslağı sekme gizlenirken ya da kapanırken de yazılır
+  const taslakYaz = () => { if (durum.elleTaslak) { clearTimeout(elleZaman); DB.koy('durum', durum).catch(() => {}); } };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') taslakYaz(); });
+  window.addEventListener('pagehide', taslakYaz);
+  window.DenemeTakip = { durum: () => durum, dosyaIsle, M };
+  baslat();
+})();
+</script>
+</body>
+</html>
