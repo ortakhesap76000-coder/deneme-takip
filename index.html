@@ -848,6 +848,8 @@ select { max-width: 100%; }
       if (!o || typeof o.id !== 'string' || typeof o.ad !== 'string' || !Array.isArray(o.dersler) || !o.dersler.length || !Array.isArray(o.kagitlar)) { sorun.push(`Optik sınav eksik: ${ad}`); continue; }
       if ((o.secenek != null && ![4, 5].includes(o.secenek)) || (o.seviye != null && !Number.isInteger(o.seviye)) || !sayiMi(o.ceza || 0) || (o.tarih && !/^\d{4}-\d{2}-\d{2}$/.test(o.tarih))) sorun.push(`Optik sınav ${ad}: tanım bozuk.`);
       if (o.dersler.some(d => !d || typeof d.id !== 'string' || typeof d.ad !== 'string' || !Number.isInteger(d.soru) || d.soru < 1 || !d.anahtar || !Array.isArray(d.anahtar.A) || d.anahtar.A.length !== d.soru || (d.anahtar.B != null && !Array.isArray(d.anahtar.B)))) sorun.push(`Optik sınav ${ad}: ders ya da anahtar bozuk.`);
+      if (o.dersler.some(d => d && d.kazanim != null && (!Array.isArray(d.kazanim) || d.kazanim.length !== d.soru || d.kazanim.some(x => !Array.isArray(x) || x.some(i => typeof i !== 'string'))))
+        || (o.kazanimAd != null && (typeof o.kazanimAd !== 'object' || Array.isArray(o.kazanimAd) || Object.values(o.kazanimAd).some(a => typeof a !== 'string')))) sorun.push(`Optik sınav ${ad}: kazanım bozuk.`);
       if (o.kagitlar.some(k => !k || !/^\d+$/.test(String(k.no)) || !['A', 'B'].includes(k.kitapcik) || !Array.isArray(k.cevaplar) || k.cevaplar.length !== o.dersler.length || k.cevaplar.some(c => typeof c !== 'string'))) sorun.push(`Optik sınav ${ad}: bozuk kâğıt.`);
     }
     return sorun;
@@ -1543,7 +1545,8 @@ ${p.join('\n')}
       dersler: op.dersler.map(d => {
         const anahtar = {};
         for (const k of kitapciklar(op)) anahtar[k] = d.anahtar[k].slice();
-        return { id: d.id, ad: d.ad, soru: d.soru, anahtar, kazanim: Array.from({ length: d.soru }, () => []) };
+        const kazanim = Array.isArray(d.kazanim) && d.kazanim.length === d.soru ? d.kazanim.map(x => (x || []).slice()) : Array.from({ length: d.soru }, () => []);
+        return { id: d.id, ad: d.ad, soru: d.soru, anahtar, kazanim };
       }),
       kagitlar: op.kagitlar.map(k => ({
         no: k.no, sinif: sinifBul(k.no) || '', kitapcik: op.kitapcikB ? k.kitapcik : 'A',
@@ -1610,9 +1613,157 @@ ${p.join('\n')}
     return { degisen: [...degisen], rapor };
   }
 
+  /* ---------- kazanım Excel'i (TestPlus şablonu: No · Kazanım · Kazanım Grup) ---------- */
+  // .xlsx (zip) dosyasının ilk sayfasını satır dizisi olarak verir; kütüphanesiz (DecompressionStream)
+  async function xlsxSatirlar(tampon) {
+    const b = new Uint8Array(tampon), v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+    let son = -1;
+    for (let i = b.length - 22; i >= Math.max(0, b.length - 65557); i--) if (v.getUint32(i, true) === 0x06054b50) { son = i; break; }
+    if (son < 0) throw new Error('Dosya Excel (.xlsx) değil.');
+    const adet = v.getUint16(son + 10, true);
+    let p = v.getUint32(son + 16, true);
+    const girdiler = new Map();
+    for (let i = 0; i < adet && p + 46 <= b.length && v.getUint32(p, true) === 0x02014b50; i++) {
+      const yontem = v.getUint16(p + 10, true), boy = v.getUint32(p + 20, true);
+      const adBoy = v.getUint16(p + 28, true), ekBoy = v.getUint16(p + 30, true), notBoy = v.getUint16(p + 32, true);
+      const yerel = v.getUint32(p + 42, true);
+      girdiler.set(new TextDecoder().decode(b.subarray(p + 46, p + 46 + adBoy)), { yontem, boy, yerel });
+      p += 46 + adBoy + ekBoy + notBoy;
+    }
+    const oku = async (ad) => {
+      const g = girdiler.get(ad);
+      if (!g) return null;
+      const bas = g.yerel + 30 + v.getUint16(g.yerel + 26, true) + v.getUint16(g.yerel + 28, true);
+      const veri = b.subarray(bas, bas + g.boy);
+      if (g.yontem === 0) return new TextDecoder().decode(veri);
+      if (g.yontem !== 8) throw new Error('Excel dosyası desteklenmeyen biçimde sıkıştırılmış.');
+      const ds = new DecompressionStream('deflate-raw');
+      const w = ds.writable.getWriter(); w.write(veri); w.close();
+      return new Response(ds.readable).text();
+    };
+    const ozel = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+    const varlik = (s) => s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (_, e) => e[0] === '#' ? String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : Number(e.slice(1))) : ozel[e.toLowerCase()]);
+    const metin = (xml) => [...xml.replace(/<rPh\b[\s\S]*?<\/rPh>/g, '').matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)]
+      .map(m => varlik(m[1]).replace(/_x([0-9A-Fa-f]{4})_/g, (_, x) => String.fromCharCode(parseInt(x, 16)))).join('');
+    const paylasilan = [...((await oku('xl/sharedStrings.xml')) || '').matchAll(/<si\b[^>]*?(?:\/>|>([\s\S]*?)<\/si>)/g)].map(m => metin(m[1] || ''));
+    // ilk sayfa: workbook.xml'deki ilk <sheet> ve onun ilişki hedefi
+    let yol = 'xl/worksheets/sheet1.xml';
+    const kitap = await oku('xl/workbook.xml'), iliski = await oku('xl/_rels/workbook.xml.rels');
+    const rid = kitap && (kitap.match(/<sheet\b[^>]*\br:id="([^"]+)"/) || [])[1];
+    const iliskiEtiketi = rid && iliski && [...iliski.matchAll(/<Relationship\b[^>]*>/g)].map(m => m[0]).find(e => e.includes(`Id="${rid}"`));
+    const hedef = iliskiEtiketi && (iliskiEtiketi.match(/Target="([^"]+)"/) || [])[1];
+    if (hedef) yol = hedef.startsWith('/') ? hedef.slice(1) : 'xl/' + hedef.replace(/^\.\//, '');
+    const sayfa = await oku(yol);
+    if (!sayfa) throw new Error('Excel dosyasında sayfa bulunamadı.');
+    const satirlar = [];
+    for (const m of sayfa.matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
+      const r = Number((m[1].match(/\br="(\d+)"/) || [])[1]) || satirlar.length + 1;
+      const satir = [];
+      for (const c of (m[2] || '').matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+        const ref = (c[1].match(/\br="([A-Z]+)\d+"/) || [])[1];
+        const tur = (c[1].match(/\bt="([^"]+)"/) || [])[1];
+        const ic = c[2] || '';
+        const deger = (ic.match(/<v>([\s\S]*?)<\/v>/) || [])[1];
+        let s = '';
+        if (tur === 's') s = paylasilan[Number(deger)] || '';
+        else if (tur === 'inlineStr') s = metin(ic);
+        else if (deger != null) s = varlik(deger);
+        const sutun = ref ? [...ref].reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0) - 1 : satir.length;
+        satir[sutun] = s;
+      }
+      satirlar[r - 1] = Array.from(satir, x => x == null ? '' : x);
+    }
+    return Array.from(satirlar, x => x || []);
+  }
+
+  const bosluk = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+  const kazanimSade = (ad) => bosluk(String(ad || '').replace(/^\[[^\]]*\]\s*/, ''));
+  // Python str.casefold() ile toLowerCase'in ayrıştığı harfler (fizik metninde µ görülebilir)
+  const katla = (s) => s.toLowerCase().replace(/[µßςſ]/g, c => ({ 'µ': 'μ', 'ß': 'ss', 'ς': 'σ', 'ſ': 's' })[c]);
+  // TestPlus dönüştürücüsüyle aynı kimlik: 'k' + sha1(boşlukları sadeleşmiş, casefold edilmiş ad)[:10]; ad öneksiz verilir
+  async function kazanimKimligi(ad) {
+    const ozet = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(katla(bosluk(ad))));
+    return 'k' + [...new Uint8Array(ozet)].map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 10);
+  }
+
+  /* Satırları bölümlere ayırır. "[Ders 7] …" önekli satır o dersin 7. sorusudur; öneksiz satırda soru No sütunundan,
+   * bölüm adı dosya adından ("Kazanımlar - Fen Bilimleri - …" → Fen Bilimleri) gelir.
+   * Dönüş: { bolumler:[{ ad, girdiler:[{ no, ad }] }], hata? } */
+  function kazanimBolumleri(satirlar, dosyaAdi = '') {
+    const kucuk = (s) => String(s == null ? '' : s).trim().toLocaleLowerCase('tr');
+    const kazanimMi = (c) => /^kazan[ıi]m(lar)?(\s+ad[ıi])?$/.test(kucuk(c));
+    const bas = satirlar.findIndex(r => r.some(kazanimMi));
+    if (bas < 0) return { bolumler: [], hata: 'Başlık satırında “Kazanım” sütunu yok (TestPlus şablonu: No · Kazanım · Kazanım Grup).' };
+    const kSut = satirlar[bas].findIndex(kazanimMi);
+    const nSut = satirlar[bas].findIndex(c => /^(soru\s*)?(no|numarası?)\.?$|^sıra$/.test(kucuk(c)));
+    const parca = String(dosyaAdi).replace(/\.[^.]*$/, '').replace(/\s*\(\d+\)$/, '').split(/\s+-\s+/);
+    const dosyaBolum = ((parca.length >= 2 && /^kazan[ıi]m/i.test(parca[0])) ? parca[1] : parca[0]).trim() || 'Dosya';
+    const harita = new Map();
+    satirlar.slice(bas + 1).forEach((r, i) => {
+      const ham = String(r[kSut] == null ? '' : r[kSut]).trim();
+      if (!ham || ham.toLowerCase() === 'null') return;
+      const sira = i + 1; // No sütunu yoksa ya da boşsa satırın başlıktan sonraki konumu
+      const m = ham.match(/^\[(.+?)\s+(\d+)\]\s*([\s\S]*)$/);
+      const bolum = m ? m[1].trim() : dosyaBolum;
+      const no = m ? Number(m[2]) : (parseInt(nSut >= 0 ? r[nSut] : '', 10) || sira);
+      const ad = kazanimSade(m ? m[3] : ham);
+      if (!ad || !(no >= 1)) return;
+      if (!harita.has(bolum)) harita.set(bolum, new Map());
+      const g = harita.get(bolum);
+      if (!g.has(no)) g.set(no, ad);
+    });
+    if (!harita.size) return { bolumler: [], hata: 'Dosyada kazanım satırı yok.' };
+    return { bolumler: [...harita].map(([ad, g]) => ({ ad, dosya: String(dosyaAdi), girdiler: [...g].map(([no, a]) => ({ no, ad: a })).sort((x, y) => x.no - y.no) })) };
+  }
+
+  /* Her bölüme en uygun dersin sırası (-1: koç seçer). "Türk Dili ve Edebiyatı" → Türkçe, "Matematik" → Temel Matematik. */
+  function kazanimDersTahmin(bolumler, op) {
+    const kelime = (s) => new Set(String(s).toLocaleLowerCase('tr').replace(/türk dili( ve)?( edebiyatı)?|edebiyat/g, 'türkçe')
+      .replace(/[^a-zçğıöşü0-9]+/g, ' ').split(' ').filter(w => w && !['ve', 'bilimleri', 'bilimi', 'temel', 'testi', 'dersi', 'sınıf'].includes(w)));
+    const dersK = op.dersler.map(d => kelime(d.ad));
+    const tahmin = bolumler.map(b => {
+      const k = kelime(b.ad);
+      const puan = dersK.map(dk => { let n = 0; for (const w of k) if (dk.has(w)) n++; return n ? n / Math.max(k.size, dk.size) : 0; });
+      const en = Math.max(...puan);
+      return en > 0 && puan.filter(p => p === en).length === 1 ? puan.indexOf(en) : -1;
+    });
+    // hiçbir ad tutmadıysa ve bölüm sayısı ders sayısına eşitse sırayla
+    if (tahmin.every(t => t < 0) && bolumler.length === op.dersler.length) return bolumler.map((_, i) => i);
+    // aynı derse iki bölüm düştüyse ikisini de koça bırak
+    return tahmin.map(t => t >= 0 && tahmin.filter(x => x === t).length > 1 ? -1 : t);
+  }
+
+  /* Eşlemeyi uygular (yerinde). eslem = [{ ders: dersSırası (-1: atla), girdiler }]. Eşlenen dersin eski kazanımları silinir.
+   * Dönüş: { hata } ya da { atanan, kazanimlar:[{ id, ad }] } */
+  async function kazanimUygula(op, eslem) {
+    const secili = eslem.filter(e => e.ders >= 0 && e.ders < op.dersler.length);
+    if (!secili.length) return { hata: 'Hiçbir bölüm bir derse eşlenmedi.' };
+    const dersler = secili.map(e => e.ders);
+    if (new Set(dersler).size !== dersler.length) return { hata: 'İki bölüm aynı derse eşlenmiş.' };
+    for (const e of secili) {
+      const d = op.dersler[e.ders];
+      const fazla = e.girdiler.find(g => g.no > d.soru);
+      if (fazla) return { hata: `${d.ad} ${d.soru} soru, dosyadaki bölümde ${fazla.no}. soru var. Eşlemeyi denetleyin.` };
+    }
+    const kimlikler = await Promise.all(secili.map(e => Promise.all(e.girdiler.map(g => kazanimKimligi(g.ad)))));
+    const adlar = { ...(op.kazanimAd || {}) };
+    let atanan = 0;
+    secili.forEach((e, i) => {
+      const d = op.dersler[e.ders];
+      d.kazanim = Array.from({ length: d.soru }, () => []);
+      e.girdiler.forEach((g, j) => { const id = kimlikler[i][j]; adlar[id] = g.ad; d.kazanim[g.no - 1] = [id]; atanan++; });
+    });
+    // artık hiçbir soruda geçmeyen adları at
+    const kullanilan = new Set(op.dersler.flatMap(d => (d.kazanim || []).flat()));
+    op.kazanimAd = Object.fromEntries(Object.entries(adlar).filter(([id]) => kullanilan.has(id)));
+    return { atanan, kazanimlar: Object.entries(op.kazanimAd).map(([id, ad]) => ({ id, ad })) };
+  }
+  const kazanimSayisi = (d) => (d.kazanim || []).filter(x => x && x.length).length;
+
   const Optik = {
     SAYFA, formKodu, formTanimi, formDuzeni, formSvg, kodla, kodCoz, griyeCevir, formOku, homografi,
     HARF, SABLONLAR, ANAHTAR_NO, kontrolAlani, optikSinav, anahtarCoz, anahtarYazi, anahtarEksik, optikYayini, okumaAl,
+    xlsxSatirlar, kazanimKimligi, kazanimBolumleri, kazanimDersTahmin, kazanimUygula, kazanimSayisi,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Optik;
   else kok.Optik = Optik;
@@ -2172,7 +2323,7 @@ ${p.join('\n')}
     const k = M.kazanimAnalizi(x, dersId);
     if (!k) return '<p>Ders bulunamadı.</p>';
     let html = `<div class="satir ayrik" style="margin:8px 0">${dersSecici(s, dersId)}${sinifSecici(x, sorgu.sinif || '')}</div>`;
-    if (!k.kazanimlar.length) return html + `<div class="bilgi">Bu derste sorulara kazanım atanmamış. TestPlus’ta kazanım Excel’i yüklenmiş sınavlarda görünür.</div>`;
+    if (!k.kazanimlar.length) return html + `<div class="bilgi">Bu derste sorulara kazanım atanmamış. ${s.optik && optikBul(s.id) ? `Kazanım Excel’ini <a href="#/optik/${encodeURIComponent(s.id)}">optik sınav sayfasından</a> yükleyin.` : 'TestPlus’ta kazanım Excel’i yüklenmiş sınavlarda görünür.'}</div>`;
     const liste = k.kazanimlar.slice().sort((a, b) => (a.basari ?? 1) - (b.basari ?? 1));
     html += `<h2>Kapsam ve sınıf başarısı</h2><div class="tablo-kap"><table><thead><tr><th class="sol">Kazanım</th><th>Soru</th><th class="sirala">Başarı</th></tr></thead><tbody>`;
     liste.forEach(e => {
@@ -2537,7 +2688,8 @@ ${p.join('\n')}
     const ayar = op.yayinAyar || {};
     const yayin = Op.optikYayini(op, no => (ogrenci(no) || {}).sinif);
     for (const k of ['puanTuru', 'tytEsi']) if (ayar[k] != null) yayin[k] = ayar[k];
-    durum = M.birlestir(durum, { sinavlar: [yayin], ogrenciler: yeniOgr, kazanimlar: [] }).durum;
+    const kazanimlar = Object.entries(op.kazanimAd || {}).map(([id, ad]) => ({ id, ad }));
+    durum = M.birlestir(durum, { sinavlar: [yayin], ogrenciler: yeniOgr, kazanimlar }).durum;
     hayaletTemizle();
   }
   function optikHepsiniYayinla() { for (const o of durum.optik || []) if (o && Array.isArray(o.dersler) && Array.isArray(o.kagitlar)) optikYayinla(o); }
@@ -2633,7 +2785,7 @@ ${p.join('\n')}
         return `<label>${h(d.ad)} <span class="${n === d.soru ? 'iyi' : 'alt'}" data-anahtar-durum>${n} / ${d.soru}${n === d.soru ? ' ✓' : ''}</span><br><input type="text" data-is="anahtar" data-op="${h(o.id)}" data-ders="${h(d.id)}" data-kit="${k}" value="${n ? h(Op.anahtarYazi(a)) : ''}" spellcheck="false" autocomplete="off" autocapitalize="characters"></label>`;
       }).join('') + '</div>';
     }
-    html += '</div>';
+    html += '</div>' + kazanimKarti(o);
     if (o.kagitlar.length) {
       const x = yayinda ? hesap(sinavBul(o.id)) : null;
       const net = new Map(x ? x.satirlar.map(s => [String(s.no), s.toplam]) : []);
@@ -2649,6 +2801,41 @@ ${p.join('\n')}
     }
     html += `<p style="margin-top:24px"><button data-is="optik-sil" data-op="${h(o.id)}">Optik sınavı sil</button></p>`;
     return html;
+  }
+
+  // kazanım Excel'i seçildi, eşleme koçun onayını bekliyor: { opId, bolumler, tahmin, dosyalar }
+  let kazanimTaslak = null;
+  function kazanimKarti(o) {
+    const t = kazanimTaslak && kazanimTaslak.opId === o.id ? kazanimTaslak : null;
+    let html = '<div class="kart" id="kazanim-kart"><b>Kazanımlar</b>';
+    if (t) {
+      html += `<p class="alt">${h(t.dosyalar.join(', '))}: dosyadaki bölümleri sınavın dersleriyle eşleyin. Eşlenen dersin önceki kazanımlarının yerine geçer; “Alma” seçilen bölüm atlanır.</p>
+        <div class="tablo-kap"><table><thead><tr><th class="sol">Dosyadaki bölüm</th><th>Kazanımlı soru</th><th class="sol">Sınavdaki ders</th></tr></thead><tbody>`;
+      t.bolumler.forEach((b, i) => {
+        html += `<tr><td class="sol">${h(b.ad)}${t.dosyalar.length > 1 ? `<div class="alt">${h(b.dosya)}</div>` : ''}</td><td>${b.girdiler.length}</td><td class="sol"><select data-is="kazanim-ders" data-i="${i}"><option value="-1">Alma</option>${o.dersler.map((d, j) => `<option value="${j}"${t.tahmin[i] === j ? ' selected' : ''}>${h(d.ad)} (${h(d.soru)} soru)</option>`).join('')}</select></td></tr>`;
+      });
+      html += `</tbody></table></div><div class="satir"><button class="ana" data-is="kazanim-uygula" data-op="${h(o.id)}">Kazanımları ekle</button><button data-is="kazanim-vazgec">Vazgeç</button></div>`;
+    } else {
+      const varMi = o.dersler.some(d => Op.kazanimSayisi(d));
+      html += `<p class="alt">TestPlus’a yüklediğiniz kazanım Excel’ini seçin (No · Kazanım · Kazanım Grup). Tek dosyada bütün dersler ya da ders başına ayrı dosyalar olabilir; birkaç dosya birlikte seçilebilir. Soru sırası ${o.kitapcikB ? 'A kitapçığınındır' : 'kitapçıktakidir'}. Kazanım analizi sınavın Sonuçlar sayfasında görünür.</p>`;
+      if (varMi) html += `<p>${o.dersler.map(d => { const n = Op.kazanimSayisi(d); return `${h(d.ad)} <span class="${n === d.soru ? 'iyi' : n ? 'alt' : 'zayif'}">${n} / ${h(d.soru)}${n === d.soru ? ' ✓' : ''}</span>`; }).join(' · ')}</p>`;
+      html += `<div class="satir"><label class="dugme">Kazanım Excel’i seç<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple data-is="kazanim-dosya" data-op="${h(o.id)}" class="gizli"></label>${varMi ? `<button data-is="kazanim-kaldir" data-op="${h(o.id)}">Kazanımları kaldır</button>` : ''}</div>`;
+    }
+    return html + '</div>';
+  }
+  async function kazanimDosyaSec(opId, dosyalar) {
+    const o = optikBul(opId); if (!o || !dosyalar.length) return;
+    const bolumler = [], sorun = [];
+    for (const f of dosyalar) {
+      try {
+        const r = Op.kazanimBolumleri(await Op.xlsxSatirlar(await f.arrayBuffer()), f.name);
+        if (r.hata) sorun.push(`${f.name}: ${r.hata}`); else bolumler.push(...r.bolumler);
+      } catch (e) { console.error(e); sorun.push(`${f.name}: ${(e && e.message) || 'okunamadı'}`); }
+    }
+    kazanimTaslak = bolumler.length ? { opId, bolumler, tahmin: Op.kazanimDersTahmin(bolumler, o), dosyalar: dosyalar.map(f => f.name) } : null;
+    if (sorun.length) optikRapor = `<div class="bilgi ${bolumler.length ? 'uyari' : 'hata'}">${sorun.map(h).join('<br>')}</div>`;
+    yonlendir();
+    const kart = $('#kazanim-kart'); if (kart) kart.scrollIntoView({ block: 'nearest' });
   }
 
   async function anahtarDegisti(t) {
@@ -3012,6 +3199,24 @@ ${p.join('\n')}
       o.kagitlar = o.kagitlar.filter(k => k.no !== b.dataset.no); o.degisti = Date.now();
       optikYayinla(o); await kaydet(); yonlendir();
     }
+    else if (is === 'kazanim-vazgec') { kazanimTaslak = null; yonlendir(); }
+    else if (is === 'kazanim-uygula') {
+      const o = optikBul(b.dataset.op), t = kazanimTaslak; if (!o || !t || t.opId !== o.id) return;
+      let r;
+      try { r = await Op.kazanimUygula(o, t.bolumler.map((x, i) => ({ ders: t.tahmin[i], girdiler: x.girdiler }))); }
+      catch (e) { console.error(e); bildir('Kazanımlar eklenemedi: ' + ((e && e.message) || 'bilinmeyen hata')); return; }
+      if (r.hata) { bildir(r.hata); return; }
+      kazanimTaslak = null; o.degisti = Date.now();
+      optikYayinla(o);
+      const kayitli = await kaydet(); yonlendir();
+      if (kayitli) bildir(`${r.atanan} soruya kazanım atandı.`);
+    }
+    else if (is === 'kazanim-kaldir') {
+      const o = optikBul(b.dataset.op); if (!o) return;
+      if (!(await sec('Kazanımları kaldır', `${h(o.ad)}: sorulara atanmış kazanımlar kaldırılır. Excel’i yeniden seçerek geri ekleyebilirsiniz.`, [{ ad: 'Vazgeç', deger: null, ana: true }, { ad: 'Kaldır', deger: 1 }]))) return;
+      o.dersler.forEach(d => { delete d.kazanim; }); delete o.kazanimAd; o.degisti = Date.now();
+      optikYayinla(o); await kaydet(); yonlendir();
+    }
     else if (is === 'optik-sil') {
       const o = optikBul(b.dataset.op); if (!o) return;
       if (!(await sec('Optik sınavı sil', `${h(o.ad)}: cevap anahtarı ve ${o.kagitlar.length} kâğıt silinir, sonuçlar sınavlardan kalkar. Son yedekte durmaya devam eder.`, [{ ad: 'Vazgeç', deger: null, ana: true }, { ad: 'Sil', deger: 1 }]))) return;
@@ -3069,6 +3274,8 @@ ${p.join('\n')}
     const is = t.dataset.is;
     if (is === 'oku-dosya') { const fs = [...t.files]; t.value = ''; fotoOku(fs); return; }
     if (is === 'anahtar') { anahtarDegisti(t); return; }
+    if (is === 'kazanim-dosya') { const fs = [...t.files]; t.value = ''; kazanimDosyaSec(t.dataset.op, fs); return; }
+    if (is === 'kazanim-ders') { if (kazanimTaslak) kazanimTaslak.tahmin[Number(t.dataset.i)] = Number(t.value); return; }
     if (is === 'optik-sablon') {
       $('#optik-dersler').innerHTML = dersSatirlari(Op.SABLONLAR[t.value]);
       $('#optik-form [name="seviye"]').value = t.value === 'ara' ? '9' : '12';
