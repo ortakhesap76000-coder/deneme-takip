@@ -513,7 +513,7 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
 (function () {
   'use strict';
   const M = window.Motor;
-  const SURUM = 'v1.0 · 7 Ekim 2026';
+  const SURUM = 'v1.1 · 7 Ekim 2026';
   const ESIK = { zayif: 0.5, iyi: 0.67 }; // AKAS paneliyle aynı: < %50 zayıf, ≥ %67 iyi
   const VARSAYILAN_AYAR = { karneSira: true, karneKazanim: true, karneSoruDokumu: true, tahtaKisi: 7, tahtaDersler: false };
 
@@ -689,7 +689,8 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([metin], { type: 'application/json' }));
-    a.download = `deneme-takip-yedek-${new Date().toISOString().slice(0, 10)}.json`;
+    const simdi = new Date(); // dosya adında yerel gün (UTC değil)
+    a.download = `deneme-takip-yedek-${new Date(simdi - simdi.getTimezoneOffset() * 60000).toISOString().slice(0, 10)}.json`;
     a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     await yedekKaydedildi();
     bildir('Yedek indirildi. Dosyayı Drive klasörüne taşıyın.');
@@ -1297,8 +1298,8 @@ svg.grafik text { fill: var(--soluk); font-size: 11px; }
     return `<h1>Veri ve yedek</h1><div id="aktarma-sonuc">${sonuc}</div>
       <div class="kart"><b>TestPlus’tan sonuç al</b><p class="alt">Masaüstündeki “TestPlus’tan Aktar” kısayolu dönüştürücüyü çalıştırır ve <code>testplus_aktarim.json</code> dosyasını Belgeler › Deneme Takip klasörüne yazar ve klasörü açar. Dosyayı buraya bırakın ya da seçin. Aynı sınav yeniden alınırsa güncellenir; mükerrer olmaz.</p>
       <div class="surukle" id="surukle-alani">Aktarım ya da yedek dosyasını buraya bırakın<br><br><button class="ana" data-is="dosya-sec">Dosya seç</button></div></div>
-      <div class="kart"><b>Yedek</b><p class="alt">Son yedek: ${h(son)}${durum.yedekAdi ? ' · ' + h(durum.yedekAdi) : ''}. Yedek dosyasını Drive’ın eşitlenen klasörüne (<code>F:\\My Drive\\Google Drive</code>) kaydedin; telefon ve diğer bilgisayar aynı dosyadan geri yükler. İlk yedekte konum sorulur, sonrakilerde aynı dosyanın üstüne yazılır.</p>
-      <div class="satir"><button class="ana" data-is="yedekle">Yedekle</button><button data-is="yedek-yeni">Başka bir dosyaya yedekle</button><button data-is="dosya-sec">Yedekten geri yükle</button></div></div>
+      <div class="kart"><b>Yedek</b><p class="alt">Son yedek: ${h(son)}${durum.yedekAdi ? ' · ' + h(durum.yedekAdi) : ''}. Yedek dosyasını Drive’ın eşitlenen klasörüne (<code>F:\\My Drive\\Google Drive\\Deneme Takip</code>) kaydedin; telefon ve diğer bilgisayar oradan geri yükler. ${window.showSaveFilePicker ? 'İlk yedekte konum sorulur, sonrakilerde aynı dosyanın üstüne yazılır.' : 'Bu tarayıcı her yedeği tarihli yeni bir dosya olarak indirir: kaydederken bu klasörü seçin, geri yüklerken en yeni tarihli dosyayı seçin.'}</p>
+      <div class="satir"><button class="ana" data-is="yedekle">Yedekle</button>${window.showSaveFilePicker ? '<button data-is="yedek-yeni">Başka bir dosyaya yedekle</button>' : ''}<button data-is="dosya-sec">Yedekten geri yükle</button></div></div>
       <div class="kart"><b>Özet</b><p>${durum.sinavlar.length} sınav · ${durum.ogrenciler.length} öğrenci (${durum.ogrenciler.filter(o => o.ad).length} adlı) · ${durum.kazanimlar.length} kazanım</p></div>
       <div class="kart"><b>Ayarlar</b><div class="satir" style="margin-top:8px">
         <label><input type="checkbox" data-ayar="karneSira" ${a.karneSira ? 'checked' : ''}> Karnede sıra</label>
